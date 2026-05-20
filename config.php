@@ -1,9 +1,9 @@
 <?php
 // Configuración de la base de datos
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'speedtimer_db');
-define('DB_USER', 'root');
-define('DB_PASS', '');
+define('DB_HOST', 'sql306.infinityfree.com');
+define('DB_NAME', 'if0_41938707_speedtimer');
+define('DB_USER', 'if0_41938707');
+define('DB_PASS', 'Vos13073');
 
 // Iniciar sesión solo si no está ya iniciada
 if (session_status() === PHP_SESSION_NONE) {
