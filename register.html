@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpeedTimer - Registro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #3b82f6;
+            --accent-color: #f59e0b;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .panel {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--primary-color);
+            border-radius: 12px;
+            backdrop-filter: blur(5px);
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="container mx-auto max-w-md p-4">
+        <div class="panel p-8">
+            <div class="text-center mb-8">
+                <div class="logo flex items-center justify-center mb-4">
+                    <div class="logo-icon w-10 h-10 bg-conic-gradient border-2 border-gray-300 rounded transform -rotate-15"></div>
+                    <div class="logo-text text-2xl font-bold bg-gradient-to-r from-blue-500 to-green-400 bg-clip-text text-transparent ml-2">SpeedTimer</div>
+                </div>
+                <h1 class="text-2xl font-bold">Crear Cuenta</h1>
+                <p class="text-gray-400 mt-2">Regístrate para guardar tus tiempos</p>
+            </div>
+
+            <form id="register-form" class="space-y-4">
+                <div>
+                    <label for="username" class="block text-sm font-medium mb-2">Nombre de Usuario</label>
+                    <input type="text" id="username" name="username" required 
+                           class="w-full px-4 py-3 bg-slate-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500 transition">
+                </div>
+
+                <div>
+                    <label for="email" class="block text-sm font-medium mb-2">Email</label>
+                    <input type="email" id="email" name="email" required 
+                           class="w-full px-4 py-3 bg-slate-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500 transition">
+                </div>
+
+                <div>
+                    <label for="password" class="block text-sm font-medium mb-2">Contraseña</label>
+                    <input type="password" id="password" name="password" required 
+                           class="w-full px-4 py-3 bg-slate-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500 transition">
+                    <p class="text-xs text-gray-400 mt-1">Mínimo 6 caracteres</p>
+                </div>
+
+                <div>
+                    <label for="confirm_password" class="block text-sm font-medium mb-2">Confirmar Contraseña</label>
+                    <input type="password" id="confirm_password" name="confirm_password" required 
+                           class="w-full px-4 py-3 bg-slate-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500 transition">
+                </div>
+
+                <button type="submit" class="btn-primary w-full py-3 rounded-lg font-semibold transition">
+                    <i class="fas fa-user-plus mr-2"></i>Registrarse
+                </button>
+            </form>
+
+            <div class="mt-6 text-center">
+                <p class="text-gray-400">¿Ya tienes cuenta? 
+                    <a href="login.html" class="text-blue-400 hover:text-blue-300 transition">Inicia sesión aquí</a>
+                </p>
+            </div>
+
+            <div id="message" class="mt-4 text-center hidden"></div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('register-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm_password').value;
+            
+            if (password !== confirmPassword) {
+                const messageEl = document.getElementById('message');
+                messageEl.className = 'mt-4 text-center p-3 rounded-lg bg-red-900 text-red-200';
+                messageEl.textContent = 'Las contraseñas no coinciden';
+                messageEl.classList.remove('hidden');
+                return;
+            }
+            
+            if (password.length < 6) {
+                const messageEl = document.getElementById('message');
+                messageEl.className = 'mt-4 text-center p-3 rounded-lg bg-red-900 text-red-200';
+                messageEl.textContent = 'La contraseña debe tener al menos 6 caracteres';
+                messageEl.classList.remove('hidden');
+                return;
+            }
+            
+            const formData = new FormData(this);
+            formData.append('action', 'register');
+            
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Creando cuenta...';
+            submitBtn.disabled = true;
+            
+            try {
+                const response = await fetch('auth.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                const messageEl = document.getElementById('message');
+                messageEl.className = 'mt-4 text-center p-3 rounded-lg';
+                
+                if (result.success) {
+                    messageEl.className += ' bg-green-900 text-green-200';
+                    messageEl.textContent = result.message;
+                    setTimeout(() => {
+                        window.location.href = 'timer.html';
+                    }, 1000);
+                } else {
+                    messageEl.className += ' bg-red-900 text-red-200';
+                    messageEl.textContent = result.message;
+                }
+                
+                messageEl.classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('Error:', error);
+                const messageEl = document.getElementById('message');
+                messageEl.className = 'mt-4 text-center p-3 rounded-lg bg-red-900 text-red-200';
+                messageEl.textContent = 'Error de conexión';
+                messageEl.classList.remove('hidden');
+            } finally {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+
+        // Estilo para el logo
+        const style = document.createElement('style');
+        style.textContent = `
+            .bg-conic-gradient {
+                background: conic-gradient(
+                    #ff0000 0deg 90deg,
+                    #ffffff 90deg 180deg,
+                    #0000ff 180deg 270deg,
+                    #ffff00 270deg 360deg
+                );
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

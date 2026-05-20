@@ -1,0 +1,1690 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpeedTimer — Algoritmos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.cubing.net/js/cubing/twisty" type="module"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --accent:  #f59e0b;
+            --algo:    #8b5cf6;
+            --panel:   rgba(15,23,42,0.88);
+            --card:    rgba(20,30,55,0.9);
+            --border:  rgba(59,130,246,0.35);
+        }
+        *{box-sizing:border-box;}
+        html{scroll-behavior:smooth;}
+        body{
+            font-family:'Roboto',sans-serif;
+            background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);
+            color:#f1f5f9;min-height:100vh;margin:0;padding:0;overflow-x:hidden;
+        }
+        .logo-icon{width:32px;height:32px;flex-shrink:0;background:conic-gradient(#e53935 0deg 90deg,#f5f5f5 90deg 180deg,#1565c0 180deg 270deg,#f9a825 270deg 360deg);border:2px solid #333;border-radius:4px;transform:rotate(-15deg);}
+        .logo-text{font-family:'Orbitron',sans-serif;font-weight:700;font-size:1.25rem;background:linear-gradient(to right,#3b82f6,#10b981);-webkit-background-clip:text;background-clip:text;color:transparent;}
+        .panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;backdrop-filter:blur(8px);}
+        .btn-algo{background:#8b5cf6;transition:all .3s;}
+        .btn-algo:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(139,92,246,.4);}
+        .btn-train{background:#f59e0b;transition:all .3s;}
+        .btn-train:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(245,158,11,.4);}
+        .btn-primary{background:#3b82f6;transition:all .3s;}
+        .btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(59,130,246,.4);}
+        .dd-menu{background:rgba(10,18,40,.97);border:1px solid var(--primary);border-radius:8px;box-shadow:0 12px 30px rgba(0,0,0,.5);}
+        .dd-menu a:hover{background:rgba(59,130,246,.2);}
+        .view{display:none;}
+        .view.active{display:block;}
+
+        /* ── CATEGORY GRID */
+        .cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:16px;}
+        .cat-card{background:var(--card);border:1px solid rgba(71,85,105,.5);border-radius:14px;padding:20px 14px;text-align:center;cursor:pointer;transition:all .3s ease;position:relative;overflow:hidden;}
+        .cat-card::before{content:'';position:absolute;inset:0;border-radius:14px;opacity:0;background:radial-gradient(circle at center,rgba(59,130,246,.15),transparent 70%);transition:opacity .3s;}
+        .cat-card:hover{transform:translateY(-8px);border-color:var(--primary);box-shadow:0 14px 30px rgba(0,0,0,.5);}
+        .cat-card:hover::before{opacity:1;}
+        .cat-card h3{font-size:.9rem;font-weight:600;color:#e2e8f0;margin:0 0 4px;}
+        .cat-sub{font-size:.68rem;color:#64748b;}
+        .cat-count{font-size:.67rem;color:#f59e0b;margin-top:4px;}
+
+        /* ── CUBE TWISTY ICON */
+        .cube-icon-wrap{
+            width:90px;height:90px;margin:0 auto 10px;
+            display:flex;align-items:center;justify-content:center;
+            position:relative;
+        }
+        .cube-icon-wrap twisty-player{
+            width:90px !important;
+            height:90px !important;
+            pointer-events:none;
+        }
+
+        /* ── METHODS */
+        .method-pill{display:inline-flex;align-items:center;gap:6px;background:rgba(30,41,59,.9);border:1px solid rgba(71,85,105,.6);padding:10px 18px;margin:6px;border-radius:999px;cursor:pointer;font-size:.84rem;color:#cbd5e1;transition:all .2s;}
+        .method-pill:hover{background:var(--primary);border-color:var(--primary);color:white;}
+        .method-pill.active{background:var(--algo);border-color:var(--algo);color:white;}
+
+        /* ── ALGO GRID */
+        .algo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;}
+        .algo-card{background:rgba(15,23,42,.75);border:1px solid rgba(71,85,105,.4);border-radius:12px;overflow:hidden;transition:all .25s;display:flex;flex-direction:column;}
+        .algo-card:hover{border-color:var(--primary);box-shadow:0 8px 24px rgba(0,0,0,.4);transform:translateY(-3px);}
+        .algo-card-head{background:rgba(20,30,58,.8);border-bottom:1px solid rgba(71,85,105,.3);padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px;}
+        .algo-case-name{font-size:.8rem;font-weight:600;color:#e2e8f0;flex:1;}
+        .algo-section-tag{font-size:.65rem;background:rgba(139,92,246,.2);border:1px solid rgba(139,92,246,.35);color:#c4b5fd;border-radius:999px;padding:2px 8px;white-space:nowrap;}
+        .algo-card-body{display:flex;flex-direction:row;flex:1;}
+        .algo-twisty-col{width:130px;flex-shrink:0;background:rgba(10,16,35,.5);border-right:1px solid rgba(71,85,105,.3);display:flex;align-items:center;justify-content:center;padding:8px;}
+        twisty-player{width:114px !important;height:114px !important;}
+        .algo-info-col{flex:1;padding:12px 14px;display:flex;flex-direction:column;gap:8px;}
+        .algo-moves-box{background:rgba(0,0,0,.3);border:1px solid rgba(71,85,105,.3);border-radius:6px;padding:8px 10px;font-family:'JetBrains Mono',monospace;font-size:.82rem;color:#38bdf8;line-height:1.5;word-break:break-all;}
+        .algo-moves-box.none-alg{color:#64748b;font-style:italic;}
+        .algo-tip{font-size:.72rem;color:#94a3b8;line-height:1.4;}
+        .algo-actions{display:flex;gap:6px;margin-top:auto;}
+        .btn-copy,.btn-detail{border:1px solid rgba(71,85,105,.5);border-radius:6px;padding:5px 10px;font-size:.72rem;cursor:pointer;transition:all .2s;background:rgba(30,41,59,.6);color:#94a3b8;display:flex;align-items:center;gap:5px;}
+        .btn-copy:hover{background:var(--primary);border-color:var(--primary);color:white;}
+        .btn-detail:hover{background:#10b981;border-color:#10b981;color:white;}
+        .btn-copy.copied{background:#10b981;border-color:#10b981;color:white;}
+        .section-header{display:flex;align-items:center;gap:10px;margin:20px 0 10px;padding-bottom:8px;border-bottom:1px solid rgba(71,85,105,.4);}
+        .section-header h4{font-size:.85rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#f59e0b;margin:0;}
+        .section-count{font-size:.68rem;background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);color:#fcd34d;border-radius:999px;padding:2px 8px;}
+        .search-box{background:rgba(15,23,42,.85);border:1px solid rgba(71,85,105,.6);border-radius:8px;color:#f1f5f9;padding:10px 16px;font-size:.9rem;outline:none;transition:border-color .2s;width:100%;}
+        .search-box:focus{border-color:var(--primary);}
+        .search-box::placeholder{color:#475569;}
+        .bc{display:flex;align-items:center;gap:6px;font-size:.78rem;color:#64748b;margin-bottom:16px;}
+        .bc a{color:var(--primary);cursor:pointer;}
+        .bc a:hover{text-decoration:underline;}
+        .back-btn{display:inline-flex;align-items:center;gap:8px;background:rgba(30,41,59,.8);border:1px solid rgba(71,85,105,.5);border-radius:8px;padding:8px 16px;cursor:pointer;font-size:.82rem;color:#cbd5e1;transition:all .2s;margin-bottom:16px;}
+        .back-btn:hover{background:var(--primary);border-color:var(--primary);color:white;}
+        mark{background:rgba(245,158,11,.35);color:#fcd34d;border-radius:2px;padding:0 2px;}
+
+        /* ── TOAST */
+        #toast{position:fixed;bottom:24px;right:24px;z-index:999;background:#10b981;color:white;padding:10px 18px;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.4);display:flex;align-items:center;gap:8px;font-size:.85rem;opacity:0;transition:opacity .3s;pointer-events:none;}
+        #toast.show{opacity:1;}
+
+        /* ── MODAL */
+        #modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:200;align-items:center;justify-content:center;padding:16px;}
+        #modal-overlay.open{display:flex;}
+        #modal-box{background:#0d1a30;border:1px solid var(--primary);border-radius:16px;width:100%;max-width:540px;max-height:92vh;overflow-y:auto;padding:24px;position:relative;}
+        #modal-close{position:absolute;top:14px;right:14px;background:transparent;border:none;color:#64748b;font-size:1.2rem;cursor:pointer;transition:color .2s;}
+        #modal-close:hover{color:white;}
+        .modal-twisty-wrap{display:flex;justify-content:center;margin-bottom:16px;}
+        #modal-twisty{width:220px !important;height:220px !important;}
+        .tag-chip{font-size:.62rem;border-radius:999px;padding:2px 7px;border:1px solid;}
+        .tag-blue{background:rgba(59,130,246,.15);border-color:rgba(59,130,246,.35);color:#7dd3fc;}
+        .tag-amber{background:rgba(245,158,11,.15);border-color:rgba(245,158,11,.35);color:#fcd34d;}
+        .tag-green{background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.35);color:#6ee7b7;}
+        .tag-rose{background:rgba(236,72,153,.15);border-color:rgba(236,72,153,.35);color:#f9a8d4;}
+
+        /* ── RESPONSIVE */
+        @media(max-width:640px){
+            .cat-grid{grid-template-columns:repeat(2,1fr);}
+            .algo-grid{grid-template-columns:1fr;}
+            .algo-twisty-col{width:110px;}
+            twisty-player{width:96px !important;height:96px !important;}
+        }
+        @media(max-width:440px){
+            .algo-card-body{flex-direction:column;}
+            .algo-twisty-col{width:100%;border-right:none;border-bottom:1px solid rgba(71,85,105,.3);}
+            twisty-player{width:130px !important;height:130px !important;}
+        }
+    </style>
+</head>
+<body>
+<div class="container mx-auto px-4 py-3 max-w-7xl">
+
+    <!-- ── NAV ─────────────────────────────────────────── -->
+    <nav class="flex justify-between items-center mb-5 flex-wrap gap-3">
+        <a href="index.html" class="flex items-center gap-2 no-underline">
+            <div class="logo-icon"></div>
+            <div class="logo-text">SpeedTimer</div>
+        </a>
+        <div class="flex items-center gap-2 flex-wrap justify-end">
+            <div class="relative dd-wrap">
+                <button class="px-3 py-2 bg-gray-800 rounded-lg hover:bg-gray-700 transition flex items-center text-sm gap-2">
+                    <i class="fas fa-cube text-blue-400"></i>Timer<i class="fas fa-caret-down text-blue-400"></i>
+                </button>
+                <div class="dd-menu absolute right-0 mt-2 hidden w-44 z-20">
+                    <a href="index.html" class="flex items-center px-4 py-2 text-sm gap-2"><i class="fas fa-cube"></i>3x3x3</a>
+                    <a href="index.html" class="flex items-center px-4 py-2 text-sm gap-2"><i class="fas fa-th"></i>2x2x2</a>
+                    <a href="index.html" class="flex items-center px-4 py-2 text-sm gap-2"><i class="fas fa-star"></i>Mega / Pyra</a>
+                    <a href="index.html" class="flex items-center px-4 py-2 text-sm gap-2"><i class="fas fa-blind"></i>BLD / OH</a>
+                </div>
+            </div>
+            <span class="btn-algo px-3 py-2 rounded-lg font-semibold text-sm text-white flex items-center gap-2 cursor-default"><i class="fas fa-code"></i>Algoritmos</span>
+            <div class="relative dd-wrap">
+                <button class="btn-train px-3 py-2 rounded-lg font-semibold text-sm text-white flex items-center gap-2">
+                    <i class="fas fa-tachometer-alt"></i>Entrena<i class="fas fa-caret-down"></i>
+                </button>
+                <div class="dd-menu absolute right-0 mt-2 hidden w-48 z-20">
+                    <a href="entrenamiento.html"       class="flex items-center px-4 py-2 text-sm gap-2"><i class="fas fa-cube"></i>3x3x3</a>
+                    <a href="entrenamiento2.html"      class="flex items-center px-4 py-2 text-sm gap-2"><i class="fas fa-th"></i>2x2x2</a>
+                    <a href="entrenamiento4.html"      class="flex items-center px-4 py-2 text-sm gap-2"><i class="fas fa-th-large"></i>4x4x4</a>
+                    <a href="entrenamiento5.html"      class="flex items-center px-4 py-2 text-sm gap-2"><i class="fas fa-th-large"></i>5x5x5</a>
+                    <div class="border-t border-gray-700 my-1"></div>
+                    <a href="entrenamiento_oh.html"    class="flex items-center px-4 py-2 text-sm gap-2"><i class="fas fa-hand-paper"></i>OH</a>
+                    <a href="entrenamiento_BLD.html"   class="flex items-center px-4 py-2 text-sm gap-2"><i class="fas fa-blind"></i>BLD</a>
+                    <div class="border-t border-gray-700 my-1"></div>
+                    <a href="entrenamiento_mega.html"  class="flex items-center px-4 py-2 text-sm gap-2"><i class="fas fa-star"></i>Megaminx</a>
+                    <a href="entrenamiento_pyra.html"  class="flex items-center px-4 py-2 text-sm gap-2"><i class="fas fa-play"></i>Pyraminx</a>
+                    <a href="entrenamiento_skewb.html" class="flex items-center px-4 py-2 text-sm gap-2"><i class="fas fa-gem"></i>Skewb</a>
+                    <a href="entrenamiento_sq-1.html"  class="flex items-center px-4 py-2 text-sm gap-2"><i class="fas fa-square"></i>Square-1</a>
+                </div>
+            </div>
+            <a href="login.html" class="p-2 rounded-lg hover:bg-gray-700 transition" title="Mi cuenta">
+                <i class="fas fa-user-circle text-xl text-blue-400"></i>
+            </a>
+        </div>
+    </nav>
+
+    <!-- ── HEADER ──────────────────────────────────────── -->
+    <div class="panel p-5 mb-5">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <h1 class="text-2xl font-bold flex items-center gap-3">
+                    <i class="fas fa-book-open text-purple-400"></i>Librería de Algoritmos
+                </h1>
+                <p class="text-slate-400 text-sm mt-1">
+                    Visualización 3D real con cubing.js · Animación del caso · Copia con un clic
+                </p>
+            </div>
+            <div class="relative" style="max-width:280px;width:100%">
+                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
+                <input id="global-search" class="search-box pl-9 pr-4" placeholder="Buscar cualquier algoritmo…">
+            </div>
+        </div>
+    </div>
+
+    <!-- ── VISTA: CATEGORÍAS ───────────────────────────── -->
+    <div id="v-cats" class="view active">
+        <div id="search-panel" class="hidden mb-4"></div>
+        <div class="cat-grid" id="cat-grid"></div>
+    </div>
+
+    <!-- ── VISTA: MÉTODOS ──────────────────────────────── -->
+    <div id="v-methods" class="view">
+        <div class="bc"><a onclick="goCats()">Inicio</a><span>/</span><span id="bc1">—</span></div>
+        <button class="back-btn" onclick="goCats()"><i class="fas fa-arrow-left"></i>Categorías</button>
+        <div class="panel p-5">
+            <h2 class="text-xl font-bold mb-1 flex items-center gap-2"><i class="fas fa-layer-group text-blue-400"></i><span id="m-title">Métodos</span></h2>
+            <p class="text-slate-400 text-sm mb-5" id="m-desc"></p>
+            <div id="m-list" class="flex flex-wrap"></div>
+        </div>
+    </div>
+
+    <!-- ── VISTA: ALGORITMOS ───────────────────────────── -->
+    <div id="v-algos" class="view">
+        <div class="bc">
+            <a onclick="goCats()">Inicio</a><span>/</span>
+            <a id="bc2" onclick="goMethods()">—</a><span>/</span>
+            <span id="bc3">—</span>
+        </div>
+        <button class="back-btn" onclick="goMethods()"><i class="fas fa-arrow-left"></i>Métodos</button>
+        <div class="panel p-5">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                <div>
+                    <h2 class="text-xl font-bold flex items-center gap-2">
+                        <i class="fas fa-code-branch text-purple-400"></i><span id="a-title"></span>
+                    </h2>
+                    <p class="text-slate-400 text-sm mt-1" id="a-desc"></p>
+                </div>
+                <input id="algo-search" class="search-box" placeholder="Filtrar…" style="max-width:200px">
+            </div>
+            <div id="a-content"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ── MODAL ───────────────────────────────────────────── -->
+<div id="modal-overlay">
+    <div id="modal-box">
+        <button id="modal-close" onclick="closeModal()"><i class="fas fa-times"></i></button>
+        <h3 id="modal-name" class="text-lg font-bold mb-1 pr-8 text-white"></h3>
+        <p id="modal-section" class="text-xs text-slate-400 mb-4"></p>
+        <div class="modal-twisty-wrap">
+            <twisty-player id="modal-twisty" background="none" control-panel="bottom-row" hint-facelets="floating"></twisty-player>
+        </div>
+        <div id="modal-moves" class="algo-moves-box text-sm mb-3"></div>
+        <div id="modal-tip" class="algo-tip mb-3 hidden"></div>
+        <div id="modal-tags" class="flex flex-wrap gap-2 mb-4"></div>
+        <button class="btn-primary px-4 py-2 rounded-lg text-sm text-white flex items-center gap-2 w-full justify-center" onclick="copyModal()">
+            <i class="fas fa-copy"></i>Copiar algoritmo
+        </button>
+    </div>
+</div>
+
+<!-- ── TOAST ───────────────────────────────────────────── -->
+<div id="toast"><i class="fas fa-check-circle"></i><span id="toast-msg">Copiado</span></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// HELPERS cubing.js
+// ═══════════════════════════════════════════════════════════
+function isNoAlg(moves){
+    if(!moves) return true;
+    const m=moves.trim();
+    return m==='—'||m.startsWith('Sin')||m.startsWith('Intuit')||m.startsWith('Construc')||m.startsWith('Skip')||m.startsWith('Varía')||m.startsWith('Solo')||m.startsWith('Uso')||m.startsWith('x2')||m.startsWith('UR')||m.startsWith('UL')||m.startsWith('DR')||m.startsWith('DL')||m.startsWith('Todos')||m.startsWith('Rotar')||m.startsWith('Repetir')||m.startsWith('Mismo');
+}
+
+function makeTwistyEl(alg, puzzle, size){
+    const tp=document.createElement('twisty-player');
+    tp.setAttribute('puzzle', puzzle||'3x3x3');
+    tp.setAttribute('alg', alg);
+    tp.setAttribute('experimental-setup-anchor','end');
+    tp.setAttribute('background','none');
+    tp.setAttribute('control-panel','none');
+    tp.setAttribute('hint-facelets','floating');
+    tp.style.cssText=`width:${size}px;height:${size}px;`;
+    return tp;
+}
+
+function makeCategoryTwisty(puzzle, alg, size){
+    const tp=document.createElement('twisty-player');
+    tp.setAttribute('puzzle', puzzle||'3x3x3');
+    if(alg) tp.setAttribute('alg', alg);
+    tp.setAttribute('background','none');
+    tp.setAttribute('control-panel','none');
+    tp.setAttribute('hint-facelets','none');
+    tp.setAttribute('visualization','3D');
+    tp.style.cssText=`width:${size}px;height:${size}px;pointer-events:none;`;
+    return tp;
+}
+
+function noVizDiv(size){
+    const d=document.createElement('div');
+    d.style.cssText=`width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;color:#475569;font-size:.68rem;text-align:center;`;
+    d.innerHTML='<i class="fas fa-infinity" style="font-size:1.5rem"></i>Intuitivo';
+    return d;
+}
+
+// ═══════════════════════════════════════════════════════════
+// BASE DE DATOS — ALGORITMOS COMPLETOS
+// ═══════════════════════════════════════════════════════════
+const DB = {
+
+// ──────────────────────────── 3x3 ────────────────────────────
+"3x3":{
+  label:"Cubo 3×3", color:"#3b82f6",
+  sub:"CFOP · Roux · ZZ · COLL",
+  puzzle:"3x3x3",
+  iconAlg:"R U R' U'",
+  methods:{
+    "CFOP — F2L":{
+      desc:"First Two Layers. Inserta pares esquina-arista simultáneamente en la primera y segunda capa.",
+      puzzle:"3x3x3",
+      sections:{
+        "Básicos":[
+          {name:"F2L Básico derecha",     moves:"U R U' R'",              tip:"El más común. Inserta en el slot derecho."},
+          {name:"F2L Básico izquierda",   moves:"U' F' U F",              tip:"Espejo para el slot izquierdo."},
+          {name:"F2L Corner abajo R",     moves:"R U' R' U R U' R'"},
+          {name:"F2L Corner abajo L",     moves:"F' U F U' F' U F"},
+          {name:"F2L Doble trigger",      moves:"R U R' U' R U R'"},
+          {name:"F2L Reverse trigger",    moves:"R' U' R U R' U' R"},
+        ],
+        "F2L — Corner y arista arriba":[
+          {name:"F2L #1",  moves:"U R U' R'"},
+          {name:"F2L #2",  moves:"U' F' U F"},
+          {name:"F2L #3",  moves:"R U2 R' U' R U R'"},
+          {name:"F2L #4",  moves:"U R U' R' U' F' U F"},
+          {name:"F2L #5",  moves:"U' F' U F U R U' R'"},
+          {name:"F2L #6",  moves:"R U2 R' U2 R U' R'"},
+          {name:"F2L #7",  moves:"F' U2 F U2 F' U F"},
+          {name:"F2L #8",  moves:"R U R' U' R U R' U' R U R'"},
+          {name:"F2L #9",  moves:"F' U' F U F' U' F"},
+          {name:"F2L #10", moves:"R U' R' U2 F' U' F"},
+          {name:"F2L #11", moves:"F' U F U2 R U R'"},
+          {name:"F2L #12", moves:"U' R U R' U R U' R'"},
+          {name:"F2L #13", moves:"U F' U' F U' F' U F"},
+          {name:"F2L #14 (d-move)",moves:"R U' R' d R' U R",      tip:"d = giro de la capa inferior."},
+          {name:"F2L #15", moves:"d R' U' R U' R' U' R",          tip:"d-move izquierdo."},
+          {name:"F2L #16", moves:"F' U' F d' F U F'"},
+          {name:"F2L #17", moves:"R U R' U2 R U' R' U R U' R'"},
+          {name:"F2L #18 (AUF swap)",moves:"R U2 R' U' F' U F U' R U' R'"},
+          {name:"F2L #19 (Sexy×3)", moves:"R U R' U' R U R' U' R U R'"},
+          {name:"F2L #20 (corner mal)",moves:"R U' R' U' R U R' U' R U' R'"},
+        ],
+        "F2L — Corner abajo":[
+          {name:"F2L Corner-D básico",    moves:"R' U' R"},
+          {name:"F2L Corner-D inverso",   moves:"F U F'"},
+          {name:"F2L Corner-D diagonal",  moves:"R U R' U' R U R' U' R U' R'"},
+          {name:"F2L Corner-D flipped",   moves:"R U2 R' U R U' R'"},
+          {name:"F2L Corner-D sexy",      moves:"R U R' U' R U' R'"},
+        ],
+        "F2L — Arista mal orientada":[
+          {name:"Arista flip básica",     moves:"R U' R' U2 R U' R'",     tip:"Arista mal orientada en la ranura."},
+          {name:"Arista flip izq.",       moves:"F' U F U2 F' U F"},
+          {name:"Arista flip con slot",   moves:"R U2 R2 F R F' R U2 R'"},
+          {name:"Arista flipped-back",    moves:"U R U' R' U' F' U F"},
+          {name:"Arista flipped-left",    moves:"U' F' U F U R U' R'"},
+        ],
+      }
+    },
+    "CFOP — OLL":{
+      desc:"Orientation Last Layer — 57 casos. Orienta todos los stickers amarillos en una pasada.",
+      puzzle:"3x3x3",
+      sections:{
+        "Cruz":[
+          {name:"OLL Cruz — Línea",        moves:"F R U R' U' F'",              tip:"Línea horizontal. El más frecuente."},
+          {name:"OLL Cruz — L-shape",      moves:"f R U R' U' f'",              tip:"L en la parte superior."},
+          {name:"OLL Cruz — Dot",          moves:"F R U R' U' F' f R U R' U' f'",tip:"Ningún borde orientado."},
+          {name:"OLL Cruz — Alt Dot",      moves:"f R U R' U' f' F R U R' U' F'"},
+        ],
+        "Sune y variantes":[
+          {name:"OLL #26 — Sune",          moves:"R U R' U R U2 R'",           tip:"El más importante. Aprende primero este."},
+          {name:"OLL #27 — Anti-Sune",     moves:"R' U' R U' R' U2 R"},
+          {name:"OLL #21 — H",             moves:"R U2 R' U' R U R' U' R U' R'"},
+          {name:"OLL #22 — Pi",            moves:"R U2 R2 U' R2 U' R2 U2 R"},
+          {name:"OLL #23 — Headlights",    moves:"R2 D' R U2 R' D R U2 R"},
+          {name:"OLL #24 — Chameleon",     moves:"r U R' U' r' F R F'"},
+          {name:"OLL #25 — Bowtie",        moves:"F' r U R' U' r' F R"},
+        ],
+        "T y C shapes":[
+          {name:"OLL #33 — T-shape",       moves:"R U R' U' R' F R F'"},
+          {name:"OLL #45 — T-alt",         moves:"F R U R' U' F'"},
+          {name:"OLL #34 — C-shape",       moves:"R U R' U' B' R' F R F' B"},
+          {name:"OLL #46 — C-broken",      moves:"R' U' R' F R F' U R"},
+        ],
+        "W y P shapes":[
+          {name:"OLL #36 — W-right",       moves:"R U R' U R U' R' U' R' F R F'"},
+          {name:"OLL #38 — W-left",        moves:"F R' F' R U R U' R'"},
+          {name:"OLL #31 — P-left",        moves:"R' U' F U R U' R' F' R"},
+          {name:"OLL #32 — P-right",       moves:"S R U R' U' R' F R f'"},
+          {name:"OLL #43 — P-low-L",       moves:"F' U' L' U L F"},
+          {name:"OLL #44 — P-low-R",       moves:"F U R U' R' F'"},
+        ],
+        "S shapes":[
+          {name:"OLL #47 — S-left",        moves:"R' U' R' F R F' R' F R F' U R"},
+          {name:"OLL #48 — S-right",       moves:"F R U R' U' R U R' U' F'"},
+        ],
+        "Lightning y Fish":[
+          {name:"OLL #28 — Slash",          moves:"r U R' U' M U R U' R'"},
+          {name:"OLL #29",                  moves:"M U R U R' U' R' F R F' M'"},
+          {name:"OLL #39 — Big-L left",     moves:"L F' L' U' L U F U' L'"},
+          {name:"OLL #40 — Big-L right",    moves:"R' F R U R' U' F' U R"},
+          {name:"OLL #41",                  moves:"R U R' U R U2 R' F R U R' U' F'"},
+          {name:"OLL #42",                  moves:"R' U' R U' R' U2 R F R U R' U' F'"},
+          {name:"OLL #09 — Fish-R",         moves:"R U R' U' R' F R2 U R' U' F'"},
+          {name:"OLL #10 — Fish-L",         moves:"R U R' U R' F' R F R U2 R'"},
+          {name:"OLL #35 — Fish-2",         moves:"R U2 R2 F R F' R U2 R'"},
+          {name:"OLL #37 — Chameleon-2",    moves:"F R' F' R U R U' R'"},
+        ],
+        "Frying Pan y Knight Move":[
+          {name:"OLL #49 — Pan-R",          moves:"R B' R2 F R2 B R2 F' R"},
+          {name:"OLL #50 — Pan-L",          moves:"R' F R2 B' R2 F' R2 B R'"},
+          {name:"OLL #53 — Pan-flat",       moves:"l' U2 L U L' U l"},
+          {name:"OLL #54 — Pan-flat2",      moves:"r U2 R' U' R U' r'"},
+          {name:"OLL #11 — Knight-R",       moves:"r' R2 U R' U R U2 R' U M'"},
+          {name:"OLL #12 — Knight-L",       moves:"M' R' U' R U' R' U2 R U' M"},
+        ],
+        "Especiales y Dot":[
+          {name:"OLL #51 — Subway",         moves:"f R U R' U' R U R' U' f'"},
+          {name:"OLL #52 — Diamond",        moves:"R U R' U R U' B U' B' R'"},
+          {name:"OLL #55 — Skewby",         moves:"R' F R U R U' R2 F' R2 U' R' U R U R'"},
+          {name:"OLL #56 — Everywhere",     moves:"r' U' r U' R' U R U' R' U R r' U r"},
+          {name:"OLL #57 — H-OLL",          moves:"R U R' U' M' U R U' r'"},
+          {name:"OLL #01 — Dot base",       moves:"R U2 R' R' F R F' U2 R' F R F'"},
+          {name:"OLL #02 — Dot-2",          moves:"F R U R' U' F' f R U R' U' f'"},
+          {name:"OLL #17",                  moves:"R U R' U R' F R F' U2 R' F R F'"},
+          {name:"OLL #18",                  moves:"F R U R' U y' R' U2 R' F R F'"},
+          {name:"OLL #19",                  moves:"M U R U R' U' M' R' F R F'"},
+          {name:"OLL #20",                  moves:"M U R U R' U' M2 U R U' r'"},
+        ],
+        "All Corners Oriented":[
+          {name:"OLL #03 — ACO-1",          moves:"r' R2 U R' U' y r U r' U r"},
+          {name:"OLL #04 — ACO-2",          moves:"M U2 M' U2"},
+          {name:"OLL #05 — ACO-3",          moves:"r' U2 R U R' U r"},
+          {name:"OLL #06 — ACO-4",          moves:"r U2 R' U' R U' r'"},
+          {name:"OLL #07 — ACO-5",          moves:"r U R' U R U2 r'"},
+          {name:"OLL #08 — ACO-6",          moves:"r' U' R U' R' U2 r"},
+        ],
+      }
+    },
+    "CFOP — PLL":{
+      desc:"Permutation Last Layer — 21 casos. Permuta todas las piezas del LL de una sola pasada.",
+      puzzle:"3x3x3",
+      sections:{
+        "Ciclos de Esquinas":[
+          {name:"A-Perm a",  moves:"x R' U R' D2 R U' R' D2 R2 x'",     tip:"Ciclo de 3 corners horario."},
+          {name:"A-Perm b",  moves:"x R2 D2 R U R' D2 R U' R x'"},
+          {name:"E-Perm",    moves:"x' R U' R' D R U R' D' R U R' D R U' R' D'"},
+        ],
+        "Permutaciones de Aristas":[
+          {name:"H-Perm",    moves:"M2 U M2 U2 M2 U M2",                  tip:"Swap de las 4 aristas al mismo tiempo."},
+          {name:"Z-Perm",    moves:"M' U M2 U M2 U M' U2 M2"},
+          {name:"U-Perm a",  moves:"R U R' U' R' U2 R U R' U' R2 U' R'"},
+          {name:"U-Perm b",  moves:"R2 U R U R' U' R' U' R' U R'"},
+        ],
+        "Combinadas Adj/Opp":[
+          {name:"T-Perm",    moves:"R U R' U' R' F R2 U' R' U' R U R' F'", tip:"Swap adj corners + adj edges. Muy común."},
+          {name:"Y-Perm",    moves:"F R U' R' U' R U R' F' R U R' U' R' F R F'"},
+          {name:"J-Perm a",  moves:"R' U L' U2 R U' R' U2 L R U'"},
+          {name:"J-Perm b",  moves:"R U R' F' R U R' U' R' F R2 U' R'"},
+          {name:"R-Perm a",  moves:"R U' R' U' R U R D R' U' R D' R' U2 R'"},
+          {name:"R-Perm b",  moves:"R2 F R U R U' R' F' R U2 R' U2 R"},
+          {name:"F-Perm",    moves:"R' U' F' R U R' U' R' F R2 U' R' U' R U R' U R"},
+          {name:"V-Perm",    moves:"R' U R' d' R' F' R2 U' R' U R' F R F"},
+        ],
+        "G-Perms":[
+          {name:"G-Perm a",  moves:"R2 U R' U R' U' R U' R2 D U' R' U R D'"},
+          {name:"G-Perm b",  moves:"R' U' R U D' R2 U R' U R U' R U' R2 D"},
+          {name:"G-Perm c",  moves:"R2 F2 R U2 R U2 R' F R U R' U' R' F R2"},
+          {name:"G-Perm d",  moves:"R U R' y' R2 u' R U' R' U R' u R2"},
+        ],
+        "N-Perms":[
+          {name:"N-Perm a",  moves:"R U R' U R U R' F' R U R' U' R' F R2 U' R' U2 R U' R'"},
+          {name:"N-Perm b",  moves:"R' U R U' R' F' U' F R U R' F R' F' R U' R"},
+        ],
+      }
+    },
+    "Roux":{
+      desc:"FB → SB → CMLL → LSE. Eficiente y popular entre los tops. Solo M y U en el final.",
+      puzzle:"3x3x3",
+      sections:{
+        "CMLL — Grupo H":[
+          {name:"H — Skip",         moves:"U"},
+          {name:"H — Sune",         moves:"R U R' U R U2 R'"},
+          {name:"H — Anti-Sune",    moves:"R U2 R' U' R U' R'"},
+          {name:"H — Pi",           moves:"R U2 R2 U' R2 U' R2 U2 R"},
+          {name:"H — T",            moves:"R U R' U' R' F R F'"},
+          {name:"H — U-R",          moves:"R2 D' R U2 R' D R U2 R"},
+          {name:"H — U-L",          moves:"R2 D R' U2 R D' R' U2 R'"},
+          {name:"H — L",            moves:"F R U' R' U' R U R' F'"},
+          {name:"H — S",            moves:"R U R' U' M' U R U' r'"},
+          {name:"H — AS",           moves:"r U' R' F R' F' R U r'"},
+        ],
+        "CMLL — Grupo Pi":[
+          {name:"Pi — Sune-diag",   moves:"F R U R' U' R U R' U' F'"},
+          {name:"Pi — Adj",         moves:"R' U' F R U R' U' R' F' R2 U' R' U R U R'"},
+          {name:"Pi — U-adj",       moves:"R U2 R' U' R U' R' U' R U2 R' U' R U' R'"},
+          {name:"Pi — T",           moves:"r U2 R' U' R U' r'"},
+          {name:"Pi — Chameleon",   moves:"R' U' R U' R' U R U' R' U2 R"},
+          {name:"Pi — S",           moves:"R U R' U' M' U R U' r' U2 r U R' U' M' U R U' r'",tip:"Doble Sune con M moves."},
+          {name:"Pi — AS-diag",     moves:"R U2 R' U' R U' R' F R' F' R U R U' R'"},
+        ],
+        "CMLL — Grupo U":[
+          {name:"U — Adj-right",    moves:"R2 U' R U' R U R' U R2 D' U R U' R' D"},
+          {name:"U — Adj-left",     moves:"R' U R' U' R' U' R' U R U R2"},
+          {name:"U — L-adj",        moves:"R U R' F' R U R' U' R' F R2 U' R'"},
+          {name:"U — L-diag",       moves:"F R U' R' U R U R' F'"},
+          {name:"U — Diag-R",       moves:"R U' R' U R U2 R' U' R U' R'"},
+          {name:"U — Diag-L",       moves:"R U R' U' R U' R' U2 R U R'"},
+        ],
+        "CMLL — Grupo T":[
+          {name:"T — Skip",         moves:"R U R' U' R' F R F'"},
+          {name:"T — Adj",          moves:"r U' r U r U r U' r' U' r2"},
+          {name:"T — Diag",         moves:"R' U R' U' R' U' R' U R U R2"},
+          {name:"T — T-CMLL",       moves:"R2 D R' U2 R D' R' U2 R'"},
+          {name:"T — S",            moves:"R U R' U R U2 R' F R U R' U' F'"},
+          {name:"T — AS",           moves:"R U' R' F R' F' R U R U' R'"},
+        ],
+        "CMLL — Grupo S":[
+          {name:"S — Adj",          moves:"R U' R' U' R U R' U R U2 R'"},
+          {name:"S — Diag",         moves:"R U R' U' R U' R' U2 R U R' U R U2 R'"},
+          {name:"S — Skip",         moves:"R' U' R U' R' U2 R"},
+          {name:"S — Sune",         moves:"R U' R U R U R U' R' U' R2"},
+          {name:"S — T",            moves:"R' F R U R U' R2 F' R2 U' R' U R U R'"},
+          {name:"S — L",            moves:"R' U' R' F R F' R U' R' U2 R"},
+        ],
+        "CMLL — Grupo AS":[
+          {name:"AS — Adj",         moves:"R U R' U R U2 R' U R U' R'"},
+          {name:"AS — Diag",        moves:"R U2 R' U R U' R' U R U' R'"},
+          {name:"AS — Skip",        moves:"R U R' U R U2 R'"},
+          {name:"AS — Anti-Sune",   moves:"R2 U R U R' U' R' U' R' U R'"},
+          {name:"AS — T",           moves:"R U R' U' R' F R2 U' R' U' R U R' F'"},
+          {name:"AS — L",           moves:"F R' F' R U R U' R' F R' F' R"},
+        ],
+        "CMLL — Grupo L":[
+          {name:"L — Adj-back",     moves:"R U R' U' R U R' U' R' F R F'"},
+          {name:"L — Adj-front",    moves:"F R' F' R U2 R U2 R'"},
+          {name:"L — Diag-R",       moves:"R' U' R U' R' U R U' R' U2 R"},
+          {name:"L — Diag-L",       moves:"R U2 R' U' R U R' U' R U' R'"},
+          {name:"L — Skip",         moves:"F R U' R' U' R U R' F'"},
+          {name:"L — Sune",         moves:"R U2 R' U' R U' R'"},
+        ],
+        "LSE — Last Six Edges":[
+          {name:"4c — Ua",          moves:"M2 U M2 U2 M2 U M2"},
+          {name:"4c — Ub",          moves:"M2 U' M2 U2 M2 U' M2"},
+          {name:"4c — Z",           moves:"M' U M2 U M2 U M' U2 M2"},
+          {name:"4c — H",           moves:"M2 U M2 U2 M2 U M2"},
+          {name:"EO — Arrow R",     moves:"M U2 M U2"},
+          {name:"EO — Arrow L",     moves:"M' U2 M' U2"},
+          {name:"EO — Dot",         moves:"M U M U M U2 M' U M' U M' U2"},
+          {name:"EO — 4-flip",      moves:"M U2 M' U2 M U2 M' U2"},
+          {name:"EO — Cross",       moves:"M U M' U M U M'"},
+        ],
+      }
+    },
+    "COLL + EPLL":{
+      desc:"Orienta corners sin mover aristas del LL → permuta aristas. Reduce a 4 EPLL cases.",
+      puzzle:"3x3x3",
+      sections:{
+        "COLL":[
+          {name:"COLL — Sune",      moves:"R U R' U R U2 R'"},
+          {name:"COLL — Anti-Sune", moves:"R U2 R' U' R U' R'"},
+          {name:"COLL — T",         moves:"R U R' U' R' F R F'"},
+          {name:"COLL — Pi",        moves:"R U2 R2 U' R2 U' R2 U2 R"},
+          {name:"COLL — U (R)",     moves:"R2 D' R U2 R' D R U2 R"},
+          {name:"COLL — U (L)",     moves:"R2 D R' U2 R D' R' U2 R'"},
+          {name:"COLL — L",         moves:"F R U' R' U' R U R' F'"},
+          {name:"COLL — S",         moves:"r U R' U' r' F R F'"},
+          {name:"COLL — AS",        moves:"r' U' R U r F' R' F"},
+          {name:"COLL — H",         moves:"R U R' U R U' R' U R U2 R'"},
+        ],
+        "EPLL":[
+          {name:"EPLL — H",         moves:"M2 U M2 U2 M2 U M2"},
+          {name:"EPLL — Z",         moves:"M' U M2 U M2 U M' U2 M2"},
+          {name:"EPLL — Ua",        moves:"R U R' U' R' U2 R U R' U' R2 U' R'"},
+          {name:"EPLL — Ub",        moves:"R2 U R U R' U' R' U' R' U R'"},
+        ],
+      }
+    },
+    "ZZ — EOLine + ZBLL":{
+      desc:"EOLine → ZZF2L sin giros de cubo → ZBLL. Método eficiente para sub-10.",
+      puzzle:"3x3x3",
+      sections:{
+        "EOLine":[
+          {name:"EO — Básico F",        moves:"F R U R' U' F'",          tip:"Orienta aristas del frente."},
+          {name:"EO — M-move",          moves:"M' U2 M U2"},
+          {name:"EO — Línea F",         moves:"F U R U' R' F'"},
+          {name:"EO — Alt",             moves:"F R' F' R"},
+          {name:"EO — 4 aristas",       moves:"F R U R' U' F' f R U R' U' f'"},
+        ],
+        "ZBLL (selección principal)":[
+          {name:"ZBLL — H1",        moves:"R U2 R' U' R U R' U' R U R' U' R U' R'"},
+          {name:"ZBLL — H2",        moves:"R U R' U R U2 R' U' R U' R'"},
+          {name:"ZBLL — H3",        moves:"R U2 R2 U' R2 U' R2 U2 R"},
+          {name:"ZBLL — U1",        moves:"R U R' U R U2 R' U' R U' R'"},
+          {name:"ZBLL — U2",        moves:"R' U' R U' R' U2 R U R U' R'"},
+          {name:"ZBLL — T1",        moves:"R U R' U' R' F R F'"},
+          {name:"ZBLL — T2",        moves:"R' F R F' R U' R' U R U R'"},
+          {name:"ZBLL — T3",        moves:"R2 D R' U2 R D' R' U2 R'"},
+          {name:"ZBLL — L1",        moves:"R U2 R' U' R U' R' U' R U' R' U R U R'"},
+          {name:"ZBLL — L2",        moves:"R' U R' U' R' U' R' U R U R2 U R U R'"},
+          {name:"ZBLL — Pi1",       moves:"R U R' U R U2 R' F R U R' U' F'"},
+          {name:"ZBLL — Pi2",       moves:"F R' F' R U R U' R' F R U R' U' F'"},
+          {name:"ZBLL — AS1",       moves:"R U2 R' U' R U' R'"},
+          {name:"ZBLL — AS2",       moves:"R U' R' U R U' R' U2 R U' R'"},
+          {name:"ZBLL — S1",        moves:"F R U R' U' F'"},
+          {name:"ZBLL — S2",        moves:"R' U' R U' R' U2 R F R U R' U' F'"},
+        ],
+      }
+    },
+    "CFOP — OLL 2-Look":{
+      desc:"OLL en 2 pasos: primero cruz, luego corners. Ideal para principiantes avanzados.",
+      puzzle:"3x3x3",
+      sections:{
+        "Paso 1 — Cruz":[
+          {name:"Cruz — Línea",      moves:"F R U R' U' F'",        tip:"Tienes una línea horizontal de amarillo."},
+          {name:"Cruz — L",          moves:"f R U R' U' f'",         tip:"Tienes una L de amarillo."},
+          {name:"Cruz — Dot",        moves:"F R U R' U' S R U R' U' f'",tip:"No hay amarillo en los bordes."},
+        ],
+        "Paso 2 — Corners (7 casos)":[
+          {name:"2L-OLL — Sune",     moves:"R U R' U R U2 R'",      tip:"1 corner orientado."},
+          {name:"2L-OLL — AntiSune", moves:"R' U' R U' R' U2 R"},
+          {name:"2L-OLL — H",        moves:"R U R' U R U' R' U R U2 R'",  tip:"2 corners opuestos mal."},
+          {name:"2L-OLL — Pi",       moves:"R U2 R2 U' R2 U' R2 U2 R",    tip:"3 corners en L."},
+          {name:"2L-OLL — T",        moves:"R U R' U' R' F R F'",          tip:"2 corners en L."},
+          {name:"2L-OLL — U",        moves:"R2 D R' U2 R D' R' U2 R",      tip:"2 corners opuestos."},
+          {name:"2L-OLL — L",        moves:"F R U' R' U' R U R' F'"},
+        ],
+      }
+    },
+    "CFOP — PLL 2-Look":{
+      desc:"PLL en 2 pasos: primero corners, luego aristas. Solo 6 algoritmos.",
+      puzzle:"3x3x3",
+      sections:{
+        "Paso 1 — Corners":[
+          {name:"A-Perm a",          moves:"x R' U R' D2 R U' R' D2 R2 x'",tip:"Cicla 3 corners."},
+          {name:"A-Perm b",          moves:"x R2 D2 R U R' D2 R U' R x'"},
+          {name:"E-Perm",            moves:"x' R U' R' D R U R' D' R U R' D R U' R' D'",tip:"Swap diagonal."},
+        ],
+        "Paso 2 — Aristas":[
+          {name:"H-Perm",            moves:"M2 U M2 U2 M2 U M2",    tip:"Swap todas las aristas."},
+          {name:"Z-Perm",            moves:"M' U M2 U M2 U M' U2 M2",tip:"Swap adyacentes."},
+          {name:"U-Perm a",          moves:"R U R' U' R' U2 R U R' U' R2 U' R'"},
+          {name:"U-Perm b",          moves:"R2 U R U R' U' R' U' R' U R'"},
+        ],
+      }
+    },
+  }
+},
+
+// ──────────────────────────── 2x2 ────────────────────────────
+"2x2":{
+  label:"Cubo 2×2", color:"#10b981",
+  sub:"Ortega · CLL (42) · EG1/EG2",
+  puzzle:"2x2x2",
+  iconAlg:"R U R' U'",
+  methods:{
+    "Ortega / Varasano":{
+      desc:"OFC → OLL 2×2 (9 casos) → PBL. Ideal para comenzar y llegar a sub-15.",
+      puzzle:"2x2x2",
+      sections:{
+        "OLL 2×2 — 9 casos":[
+          {name:"OLL #1 — Skip",       moves:"—"},
+          {name:"OLL #2 — Sune",       moves:"R U R' U R U2 R'",    tip:"1 corner bien orientado."},
+          {name:"OLL #3 — Anti-Sune",  moves:"R U2 R' U' R U' R'"},
+          {name:"OLL #4 — H",          moves:"F R U R' U' F' f R U R' U' f'"},
+          {name:"OLL #5 — Pi",         moves:"R U2 R2 U' R2 U' R2 U2 R"},
+          {name:"OLL #6 — L",          moves:"F R U' R' U' R U R' F'"},
+          {name:"OLL #7 — T",          moves:"R U R' U' R' F R F'"},
+          {name:"OLL #8 — S",          moves:"r U R' U' r' F R F'"},
+          {name:"OLL #9 — AS",         moves:"r' U' R U r F' R' F"},
+        ],
+        "PBL — Permute Both Layers":[
+          {name:"PBL — Skip",          moves:"—"},
+          {name:"PBL — Ua top",        moves:"R U R' U' R' U2 R U R' U' R2 U' R'"},
+          {name:"PBL — Ub top",        moves:"R2 U R U R' U' R' U' R' U R'"},
+          {name:"PBL — H top",         moves:"M2 U M2 U2 M2 U M2"},
+          {name:"PBL — Z top",         moves:"M' U M2 U M2 U M' U2 M2"},
+          {name:"PBL — Diag top",      moves:"R' U' F' R U R' U' R' F R2 U' R' U' R U R' U R"},
+          {name:"PBL — Adj top+bot",   moves:"x R2 D2 R U R' D2 R U' R x'"},
+          {name:"PBL — H-Swap",        moves:"M2 U2 M2 U2",             tip:"Swap aristas opuestas arriba y abajo."},
+          {name:"PBL — All-adj",       moves:"R U R' U' R' F R2 U' R' U' R U R' F' R U R' U' R' F R2 U' R' U' R U R' F'"},
+        ],
+      }
+    },
+    "CLL — 42 casos":{
+      desc:"Corner Last Layer. Resuelve todos los corners del LL de una sola vez después de armar bottom.",
+      puzzle:"2x2x2",
+      sections:{
+        "Grupo H":[
+          {name:"H — Skip",      moves:"—"},
+          {name:"H — Sune",      moves:"R' U R U' R' F' U' F R"},
+          {name:"H — AS",        moves:"R' F R F' R U R' U' R U' R'"},
+          {name:"H — T",         moves:"R2 U2 R' U2 R2 U2 R2"},
+          {name:"H — U (R)",     moves:"R2 D' R U2 R' D R U2 R"},
+          {name:"H — L",         moves:"R U2 R' U2 R U R' U R U' R' U R U2 R'"},
+          {name:"H — Pi",        moves:"R' U' R' F R F' U R"},
+          {name:"H — S",         moves:"R U R' U' R' F R F' R U R' U' R' F R F'"},
+          {name:"H — AS2",       moves:"F' U' F R' F' R U F"},
+        ],
+        "Grupo U":[
+          {name:"U — Skip",      moves:"R U2 R D R' U2 R D' R2"},
+          {name:"U — Sune",      moves:"R' U R' U' R' U' R' U R U R2"},
+          {name:"U — AS",        moves:"R2 U' R' U R U' R' U' R' U R U R"},
+          {name:"U — Pi",        moves:"R2 D R' U R D' R' U' R' U' R U' R'"},
+          {name:"U — L-left",    moves:"R' U' R U' R' U R' F R F' U R"},
+          {name:"U — L-right",   moves:"R' F' R F R U' R' U R U' R' U' R' U R"},
+          {name:"U — T",         moves:"R U' R' U R U R' U R U2 R' U2 R U' R'"},
+          {name:"U — H",         moves:"R U2 R' U' R U R' U' R U R' U' R U' R'"},
+          {name:"U — S",         moves:"R U2 R' U R U' R' U2 R U' R'"},
+        ],
+        "Grupo T":[
+          {name:"T — Skip",      moves:"R U R' U' R' F R F'"},
+          {name:"T — Sune",      moves:"r U' r U r U r U' r' U' r2"},
+          {name:"T — AS",        moves:"R2 D R' U2 R D' R' U2 R'"},
+          {name:"T — Pi",        moves:"F R U' R' U' R U R' F'"},
+          {name:"T — U",         moves:"r' D' r U2 r' D r"},
+          {name:"T — L",         moves:"R U R' U' R U R' F' R U R' U' R' F R"},
+          {name:"T — H",         moves:"R U R' U R U2 R' F R U R' U' F'"},
+          {name:"T — S",         moves:"R' F R U R U' R2 F' R2 U' R' U R U R'"},
+        ],
+        "Grupo Pi":[
+          {name:"Pi — Skip",     moves:"R U2 R2 U' R2 U' R2 U2 R"},
+          {name:"Pi — Sune",     moves:"F R' F' R U2 R U2 R'"},
+          {name:"Pi — AS",       moves:"R U' R' U' R U R' U2 R U2 R' U' R U' R'"},
+          {name:"Pi — T",        moves:"R U2 R' U' R U' R' U2 R U' R' U R U R'"},
+          {name:"Pi — L",        moves:"R' U R' U' R' U' R' U R U R2 U R U R' U' R' U' R U R"},
+          {name:"Pi — U",        moves:"R U R' U R' U' R U' R' U2 R2 U R' U R U2 R'"},
+          {name:"Pi — H",        moves:"R U2 R2 U' R2 U' R' F R F' U' R2 U2 R"},
+          {name:"Pi — S",        moves:"R' F' R U R U' R2 F R U' R' U R U R'"},
+        ],
+        "Grupo S / AS / L":[
+          {name:"S — Skip",      moves:"R' U' R U' R' U2 R"},
+          {name:"S — Sune",      moves:"R U' R U R U R U' R' U' R2"},
+          {name:"S — AS",        moves:"R' F R' F' R2 U' R' U R U R' U R"},
+          {name:"S — T",         moves:"R U' R' U2 R U R' U R U' R'"},
+          {name:"S — Pi",        moves:"R' U R U' R' U R U' R' U2 R"},
+          {name:"AS — Skip",     moves:"R U R' U R U2 R'"},
+          {name:"AS — Sune",     moves:"R2 U R U R' U' R' U' R' U R'"},
+          {name:"AS — T",        moves:"R U R' U' R U' R' U2 R U R'"},
+          {name:"AS — Pi",       moves:"R U' R' U R U' R' U R U2 R'"},
+          {name:"L — Skip",      moves:"F R U' R' U' R U R' F'"},
+          {name:"L — Sune",      moves:"R U2 R' U' R U' R'"},
+          {name:"L — T",         moves:"R' F R U R' U' F' U R"},
+          {name:"L — Pi",        moves:"R' U R' F R F' R' F R F' U R"},
+        ],
+      }
+    },
+    "EG1 / EG2":{
+      desc:"Método competitivo. Bottom layer con 1 o 2 corners mal orientados. Sub-5 con esto.",
+      puzzle:"2x2x2",
+      sections:{
+        "EG1 — 1 corner incorrecto abajo":[
+          {name:"EG1 — Sune",        moves:"R U R' U R U2 R'"},
+          {name:"EG1 — Anti-Sune",   moves:"R U2 R' U' R U' R'"},
+          {name:"EG1 — T",           moves:"R U R' F' R U R' U' R' F R2 U' R'"},
+          {name:"EG1 — headlight-L", moves:"r U' r' U' r U r'"},
+          {name:"EG1 — headlight-R", moves:"r' U r U r' U' r"},
+          {name:"EG1 — Pi",          moves:"R U2 R2 U' R2 U' R2 U2 R"},
+          {name:"EG1 — U",           moves:"R2 D' R U2 R' D R U2 R"},
+          {name:"EG1 — L",           moves:"F R U' R' U' R U R' F'"},
+          {name:"EG1 — H",           moves:"R U R' U R U' R' U R U2 R'"},
+        ],
+        "EG2 — Diagonal mal abajo":[
+          {name:"EG2 — base",        moves:"R U R' U' R' F R F'"},
+          {name:"EG2 — H case",      moves:"M2 U M2 U2 M2 U M2"},
+          {name:"EG2 — diagonal",    moves:"R' U R U' R' F' U' F R"},
+          {name:"EG2 — T",           moves:"R U2 R' U' R U R' U' R U' R'"},
+          {name:"EG2 — Sune",        moves:"R U R' U R U2 R' F R U R' U' F'"},
+          {name:"EG2 — U-perm",      moves:"R2 U R U R' U' R' U' R' U R'"},
+        ],
+      }
+    },
+  }
+},
+
+// ──────────────────────────── 4x4 ────────────────────────────
+"4x4":{
+  label:"Cubo 4×4", color:"#f59e0b",
+  sub:"Reducción · OLL Parity · PLL Parity",
+  puzzle:"4x4x4",
+  iconAlg:"r U r' U'",
+  methods:{
+    "Reducción (Yau / Hoya)":{
+      desc:"Centros → aristas dobles → resolver como 3×3 + paridades. Yau empieza por 2 centros opuestos.",
+      puzzle:"4x4x4",
+      sections:{
+        "Centros":[
+          {name:"Centro con r-moves",       moves:"r U r' U' r U2 r' U' r U r'"},
+          {name:"Centro diagonal opuesto",  moves:"r U2 r' U2 r U2 r'"},
+          {name:"Centro swap 2 piezas",     moves:"r U r' U r U' r' U r U2 r'"},
+          {name:"Centro 3-ciclo",           moves:"r U r' U' r' u r u' r' u r u'"},
+          {name:"Centro fila completa",     moves:"r U2 r' U' r U r' U' r U r'"},
+          {name:"Centro 2 caps",            moves:"r2 U r2' U2 r2 U r2'"},
+          {name:"Centro opuesto 2",         moves:"u R U R' u' R U R'"},
+          {name:"Centro adj inverso",       moves:"u' R U' R' u R U R'"},
+        ],
+        "Pares de aristas":[
+          {name:"Pair frontal básico",      moves:"U R U' l' U l"},
+          {name:"Pair con flip",            moves:"r' U l U' r U l'"},
+          {name:"Pair 3-ciclo",             moves:"U R U' R' u R U' R'"},
+          {name:"Pair inverso",             moves:"d R' U R u' R' U' R"},
+          {name:"Pair arista en slot",      moves:"r U R' U R U' R' l'"},
+          {name:"Pair wing básico",         moves:"U r U' r' U R U' R'"},
+          {name:"Pair wing flip",           moves:"r' U' r U' r' U r"},
+          {name:"Pair libre-frontal",       moves:"l U' l' U R U' R'"},
+          {name:"Pair dedge en D",          moves:"d r' U r u' r' U' r"},
+        ],
+        "Paridades":[
+          {name:"OLL Parity — flip arista", moves:"Rw U2 x Rw U2 Rw U2 Rw' U2 Lw U2 Rw' U2 Rw U2 Rw' U2 Rw'", tip:"El parity más frecuente en 4x4."},
+          {name:"PLL Parity — adj aristas", moves:"r2 U2 r2 Uw2 r2 Uw2",   tip:"Swap de 2 aristas adyacentes."},
+          {name:"PLL Parity — opp aristas", moves:"Rw2 B2 U2 Lw U2 Rw' U2 Rw U2 F2 Rw F2 Lw' B2 Rw2"},
+          {name:"PLL Parity — alt",         moves:"2R2 U2 2R2 Uw2 2R2 Uw2"},
+          {name:"OLL Parity alt (corta)",   moves:"r U2 r U2 r' U2 r U2 r' U2 r U2 r'"},
+        ],
+      }
+    },
+    "CFOP 4x4 (post-reducción)":{
+      desc:"Resolver el 4x4 como 3x3 después de reducción, incluyendo movimientos internos.",
+      puzzle:"4x4x4",
+      sections:{
+        "F2L 4x4":[
+          {name:"F2L Básico R",             moves:"U R U' R'"},
+          {name:"F2L d-move",               moves:"R U' R' d R' U R"},
+          {name:"F2L wide-move",            moves:"Rw U Rw' U' Rw U Rw'"},
+          {name:"F2L inner-layer",          moves:"r U r' U' r U r'"},
+        ],
+        "OLL 4x4":[
+          {name:"OLL Sune",                 moves:"R U R' U R U2 R'"},
+          {name:"OLL Cruz",                 moves:"F R U R' U' F'"},
+          {name:"OLL T-shape",              moves:"R U R' U' R' F R F'"},
+          {name:"OLL Pi",                   moves:"R U2 R2 U' R2 U' R2 U2 R"},
+        ],
+        "PLL 4x4":[
+          {name:"PLL T-Perm",               moves:"R U R' U' R' F R2 U' R' U' R U R' F'"},
+          {name:"PLL U-Perm a",             moves:"R U R' U' R' U2 R U R' U' R2 U' R'"},
+          {name:"PLL Y-Perm",               moves:"F R U' R' U' R U R' F' R U R' U' R' F R F'"},
+        ],
+      }
+    },
+  }
+},
+
+// ──────────────────────────── 5x5 ────────────────────────────
+"5x5":{
+  label:"Cubo 5×5", color:"#ef4444",
+  sub:"Reducción · Triple edges · Paridad",
+  puzzle:"5x5x5",
+  iconAlg:"Rw U Rw' U'",
+  methods:{
+    "Reducción a 3×3":{
+      desc:"Centros 3×3 → triples de aristas → 3×3 con paridades. El método estándar para 5x5.",
+      puzzle:"5x5x5",
+      sections:{
+        "Centros 5×5":[
+          {name:"Banda con Rw",          moves:"Rw U Rw' U' Rw U2 Rw'"},
+          {name:"Pieza central",         moves:"Rw U2 Rw' U2 Rw U2 Rw'"},
+          {name:"Esquinas del centro",   moves:"Rw2 U Rw2 U' Rw2"},
+          {name:"Fila completa (3Rw)",   moves:"3Rw U 3Rw' U 3Rw U2 3Rw'"},
+          {name:"Centro inner adj",      moves:"3Rw U 3Rw' U' Rw' U Rw U'"},
+          {name:"Centro 3-ciclo",        moves:"3Rw U 3Rw' U Rw U2 3Rw' U2 Rw'"},
+          {name:"Centro diagonal",       moves:"Rw2 U2 Rw2 U2 Rw2"},
+          {name:"Centro borde-borde",    moves:"3Rw U2 3Rw' U2 3Rw U2 3Rw'"},
+        ],
+        "Triples de aristas":[
+          {name:"Triple básica",         moves:"l U l' U2 l U l'"},
+          {name:"Triple con flip",       moves:"Rw' U2 Lw U2 Rw U2 Rw' U2 Lw' U2 Rw"},
+          {name:"3-ciclo de aristas",    moves:"Rw U R' U' Rw' F R F'"},
+          {name:"Triple adj frontal",    moves:"U Rw U' Rw' U' l U l'"},
+          {name:"Triple flip interior",  moves:"3Rw U 3Rw' U' 3Rw' F 3Rw F'"},
+          {name:"Triple inverso",        moves:"l' U' l U2 l' U' l"},
+        ],
+        "Paridades 5×5":[
+          {name:"OLL Parity 5×5",        moves:"Rw U2 x Rw U2 Rw U2 Rw' U2 Lw U2 Rw' U2 Rw U2 Rw' U2 Rw'"},
+          {name:"PLL Parity adj 5×5",    moves:"Rw2 U2 Rw2 Uw2 Rw2 Uw2"},
+          {name:"PLL Parity opp 5×5",    moves:"Rw2 B2 U2 Lw U2 Rw' U2 Rw U2 F2 Rw F2 Lw' B2 Rw2"},
+          {name:"Parity arista extra",   moves:"3Rw U2 3Rw' U2 3Rw U2 3Rw' U2 3Rw U2 3Rw'"},
+        ],
+      }
+    },
+  }
+},
+
+// ──────────────────────────── OH ─────────────────────────────
+"oh":{
+  label:"One-Handed (OH)", color:"#06b6d4",
+  sub:"Mano Derecha · Mano Izquierda · OLL/PLL",
+  puzzle:"3x3x3",
+  iconAlg:"R U R' F' R U R' U' R' F R2 U' R'",
+  methods:{
+    "OH — OLL Mano Derecha":{
+      desc:"OLL optimizados para mano derecha. Priorizan R/U moves sin movimientos de mano izquierda.",
+      puzzle:"3x3x3",
+      sections:{
+        "Cruz OLL OH":[
+          {name:"Cruz — Línea",        moves:"F R U R' U' F'"},
+          {name:"Cruz — L-shape",      moves:"f R U R' U' f'"},
+          {name:"Cruz — Dot",          moves:"F R U R' U' F' f R U R' U' f'"},
+          {name:"Cruz — Alt Dot",      moves:"R' F' R' F R U R U' R U' R'"},
+        ],
+        "Sune variantes OH-R":[
+          {name:"Sune OH-R",           moves:"R U R' U R U2 R'"},
+          {name:"Anti-Sune OH-R",      moves:"R U2 R' U' R U' R'"},
+          {name:"Pi OH-R",             moves:"R U2 R2 U' R2 U' R2 U2 R"},
+          {name:"H OH-R",              moves:"R U R' U R U' R' U R U2 R'"},
+          {name:"T OH-R",              moves:"R U R' U' R' F R F'"},
+          {name:"L OH-R",              moves:"F R U' R' U' R U R' F'"},
+          {name:"W OH-R",              moves:"R U R' U R U' R' U' R' F R F'"},
+          {name:"Fish-R OH",           moves:"R U R' U' R' F R2 U R' U' F'"},
+          {name:"Chameleon OH-R",      moves:"r U R' U' r' F R F'"},
+          {name:"Bowtie OH-R",         moves:"F' r U R' U' r' F R"},
+          {name:"P-right OH",          moves:"F U R U' R' F'"},
+          {name:"S-right OH",          moves:"F R U R' U' R U R' U' F'"},
+        ],
+        "OLL completo OH-R (restantes)":[
+          {name:"OLL #28 Slash OH",    moves:"r U R' U' M U R U' R'"},
+          {name:"OLL #35 Fish-2 OH",   moves:"R U2 R2 F R F' R U2 R'"},
+          {name:"OLL #37 Cham-2 OH",   moves:"F R' F' R U R U' R'"},
+          {name:"OLL #41 OH",          moves:"R U R' U R U2 R' F R U R' U' F'"},
+          {name:"OLL #42 OH",          moves:"R' U' R U' R' U2 R F R U R' U' F'"},
+          {name:"OLL #57 H-OLL OH",    moves:"R U R' U' M' U R U' r'"},
+          {name:"OLL #53 Pan-flat OH", moves:"l' U2 L U L' U l"},
+          {name:"OLL #54 Pan-flat2 OH",moves:"r U2 R' U' R U' r'"},
+          {name:"OLL #51 Subway OH",   moves:"f R U R' U' R U R' U' f'"},
+          {name:"OLL #55 Skewby OH",   moves:"R' F R U R U' R2 F' R2 U' R' U R U R'"},
+        ],
+      }
+    },
+    "OH — PLL Mano Derecha":{
+      desc:"PLL optimizados para mano derecha. Los más importantes para OH.",
+      puzzle:"3x3x3",
+      sections:{
+        "PLL OH-R principales":[
+          {name:"T-Perm OH-R",         moves:"R U R' U' R' F R2 U' R' U' R U R' F'", tip:"El perm más frecuente en OH."},
+          {name:"J-Perm a OH-R",       moves:"R' U L' U2 R U' R' U2 L R U'"},
+          {name:"J-Perm b OH-R",       moves:"R U R' F' R U R' U' R' F R2 U' R'"},
+          {name:"R-Perm a OH-R",       moves:"R U' R' U' R U R D R' U' R D' R' U2 R'"},
+          {name:"U-Perm a OH-R",       moves:"R U R' U' R' U2 R U R' U' R2 U' R'"},
+          {name:"U-Perm b OH-R",       moves:"R2 U R U R' U' R' U' R' U R'"},
+          {name:"Y-Perm OH-R",         moves:"F R U' R' U' R U R' F' R U R' U' R' F R F'"},
+          {name:"A-Perm a OH-R",       moves:"x R' U R' D2 R U' R' D2 R2 x'"},
+          {name:"A-Perm b OH-R",       moves:"x R2 D2 R U R' D2 R U' R x'"},
+          {name:"E-Perm OH-R",         moves:"x' R U' R' D R U R' D' R U R' D R U' R' D'"},
+          {name:"Z-Perm OH-R",         moves:"M' U M2 U M2 U M' U2 M2"},
+          {name:"H-Perm OH-R",         moves:"M2 U M2 U2 M2 U M2"},
+          {name:"V-Perm OH-R",         moves:"R' U R' d' R' F' R2 U' R' U R' F R F"},
+          {name:"F-Perm OH-R",         moves:"R' U' F' R U R' U' R' F R2 U' R' U' R U R' U R"},
+          {name:"N-Perm a OH-R",       moves:"R U R' U R U R' F' R U R' U' R' F R2 U' R' U2 R U' R'"},
+          {name:"G-Perm a OH-R",       moves:"R2 U R' U R' U' R U' R2 D U' R' U R D'"},
+          {name:"G-Perm b OH-R",       moves:"R' U' R U D' R2 U R' U R U' R U' R2 D"},
+          {name:"R-Perm b OH-R",       moves:"R2 F R U R U' R' F' R U2 R' U2 R"},
+        ],
+      }
+    },
+    "OH — OLL Mano Izquierda":{
+      desc:"OLL espejados para la mano izquierda.",
+      puzzle:"3x3x3",
+      sections:{
+        "Cruz OLL OH-L":[
+          {name:"Cruz — Línea OH-L",   moves:"F' L' U' L U F"},
+          {name:"Cruz — L-shape OH-L", moves:"f' L' U' L U f"},
+          {name:"Cruz — Dot OH-L",     moves:"F' L' U' L U F f' L' U' L U f"},
+        ],
+        "Sune variantes OH-L":[
+          {name:"Sune OH-L",           moves:"L' U' L U' L' U2 L"},
+          {name:"Anti-Sune OH-L",      moves:"L' U2 L U L' U L"},
+          {name:"Pi OH-L",             moves:"L' U2 L2 U L2 U L2 U2 L'"},
+          {name:"T OH-L",              moves:"L' U' L U L F' L' F"},
+          {name:"L OH-L",              moves:"F' L' U L U L' U' L F"},
+          {name:"H OH-L",              moves:"L' U' L U L' U L U L' U2 L"},
+          {name:"W OH-L",              moves:"L' U' L U L' U L U L F' L' F"},
+          {name:"Fish-L OH",           moves:"L' U' L U L F' L2 U' L U F"},
+        ],
+      }
+    },
+    "OH — PLL Mano Izquierda":{
+      desc:"PLL espejados para la mano izquierda.",
+      puzzle:"3x3x3",
+      sections:{
+        "PLL OH-L principales":[
+          {name:"T-Perm OH-L",         moves:"L' U' L U L F' L2 U L U L' U' L F"},
+          {name:"U-Perm a OH-L",       moves:"L' U' L U L U2 L' U' L U L2 U L"},
+          {name:"U-Perm b OH-L",       moves:"L2 U' L' U' L U L U L U' L"},
+          {name:"J-Perm OH-L",         moves:"L U' L F L' U' L U L F' L2 U L"},
+          {name:"A-Perm a OH-L",       moves:"x' L U' L D2 L' U L D2 L2 x"},
+          {name:"H-Perm OH-L",         moves:"M2 U M2 U2 M2 U M2"},
+          {name:"Z-Perm OH-L",         moves:"M U' M2 U' M2 U' M U2 M2"},
+          {name:"Y-Perm OH-L",         moves:"F' L' U L U L' U' L F L' U' L U L F' L' F"},
+          {name:"R-Perm OH-L",         moves:"L2 F' L' U' L' U L F L' U2 L U2 L'"},
+          {name:"E-Perm OH-L",         moves:"x L' U L D' L' U' L D L' U' L D' L' U L D x'"},
+        ],
+      }
+    },
+  }
+},
+
+// ──────────────────────────── BLD ────────────────────────────
+"bld":{
+  label:"Blindfolded (BLD)", color:"#ec4899",
+  sub:"Old Pochmann · M2 · 3-Ciclos · 4BLD",
+  puzzle:"3x3x3",
+  iconAlg:"R U R' U' R' F R F'",
+  methods:{
+    "Old Pochmann":{
+      desc:"Buffer UFR (corners) + UF (aristas). T-Perm + Y-Perm. El método introductorio para BLD.",
+      puzzle:"3x3x3",
+      sections:{
+        "Aristas — T-Perm (buffer UF)":[
+          {name:"T-Perm base",          moves:"R U R' U' R' F R2 U' R' U' R U R' F'", tip:"Tu buffer es UF. Intercambia UF↔UB y LU↔RU."},
+          {name:"Setup A (UB)",         moves:"U2 M2 U2"},
+          {name:"Setup B (UL)",         moves:"U M2 U'"},
+          {name:"Setup C (UR)",         moves:"U' M2 U"},
+          {name:"Setup E (FL)",         moves:"L' U R U R' U' R U' L"},
+          {name:"Setup G (FR)",         moves:"R U' L' U' L U L' U R'"},
+          {name:"Setup F (BL)",         moves:"L2 U R U R' U' R U' L2"},
+          {name:"Setup H (BR)",         moves:"R2 U' L' U' L U L' U R2"},
+          {name:"Setup I (DF)",         moves:"D2 M' U2 M D2"},
+          {name:"Setup J (DL)",         moves:"L U' M2 U L'"},
+          {name:"Setup K (DB)",         moves:"B2 U M2 U' B2"},
+          {name:"Setup L (DR)",         moves:"R' U M2 U' R"},
+          {name:"Parity aristas",       moves:"U2 M' U2 M'"},
+        ],
+        "Corners — Y-Perm (buffer UFR)":[
+          {name:"Y-Perm base",          moves:"F R U' R' U' R U R' F' R U R' U' R' F R F'", tip:"Tu buffer es UFR. Intercambia UFR↔UBL."},
+          {name:"Setup B (UBR)",        moves:"y"},
+          {name:"Setup C (UBL)",        moves:"y2"},
+          {name:"Setup D (UFL)",        moves:"y'"},
+          {name:"Setup E (DBR)",        moves:"F"},
+          {name:"Setup F (DBL)",        moves:"R' F"},
+          {name:"Setup G (DFR)",        moves:"F'"},
+          {name:"Setup H (DFL)",        moves:"F2"},
+          {name:"Setup I (DFL-2)",      moves:"L F"},
+          {name:"Setup J (DBL-2)",      moves:"L2 F"},
+          {name:"Parity corners",       moves:"R U' R' U' R U R' F' R U R' U' R' F R"},
+        ],
+      }
+    },
+    "M2 para aristas":{
+      desc:"M2 (M2) para aristas. Mucho más eficiente que T-perm. El método estándar para aristas BLD.",
+      puzzle:"3x3x3",
+      sections:{
+        "Todos los targets M2":[
+          {name:"A — UB (directo)",     moves:"M2",                tip:"Sin setup. Intercambia UF↔UB."},
+          {name:"B — UL",              moves:"U M2 U'"},
+          {name:"C — UR",              moves:"U' M2 U"},
+          {name:"D — UF (buffer)",     moves:"—"},
+          {name:"E — FL",              moves:"L' U M2 U' L"},
+          {name:"F — BL",              moves:"L2 U M2 U' L2"},
+          {name:"G — FR",              moves:"R U' M2 U R'"},
+          {name:"H — BR",              moves:"R2 U' M2 U R2"},
+          {name:"I — DL",              moves:"L U' M2 U L'"},
+          {name:"J — DB",              moves:"B2 U' M2 U B2"},
+          {name:"K — DR",              moves:"R' U M2 U' R"},
+          {name:"L — DF",              moves:"D2 M2 D2"},
+          {name:"M — FD (alt)",        moves:"F' U M2 U' F"},
+          {name:"N — BD",              moves:"F2 U M2 U' F2"},
+          {name:"Parity M2",           moves:"U2 M' U2 M'",        tip:"Paridad de aristas."},
+        ],
+        "EO — Aristas Flippeadas":[
+          {name:"Flip UB",             moves:"U2 M' U2 M'"},
+          {name:"Flip UL",             moves:"U M' U' M U M' U'"},
+          {name:"Flip UR",             moves:"U' M' U M U' M' U"},
+          {name:"Flip FL",             moves:"L' U M' U' L"},
+          {name:"Flip FR",             moves:"R U' M' U R'"},
+          {name:"Flip DF",             moves:"D2 M' D2"},
+          {name:"Flip DB",             moves:"B2 M' B2"},
+        ],
+      }
+    },
+    "3-Ciclos (avanzado)":{
+      desc:"Commutatores para ciclos de 3 piezas. Muy eficiente para sub-40.",
+      puzzle:"3x3x3",
+      sections:{
+        "Commutatores de aristas":[
+          {name:"[M, U]  UF→DF→UB",    moves:"M U M' U'"},
+          {name:"[M, U'] UF→UB→DF",    moves:"M U' M' U"},
+          {name:"[M, U2] UF↔DF",       moves:"M U2 M' U2"},
+          {name:"[R, U]  UF→FR→UR",    moves:"R U R' U'"},
+          {name:"3-ciclo eje U",        moves:"U R U' M' U R' U' M"},
+          {name:"3-ciclo eje L",        moves:"L' U L U' M' L' U L U' M"},
+          {name:"3-ciclo eje F",        moves:"F U F' M' F U' F' M"},
+          {name:"Commutador básico",    moves:"R U' R' U R U R' U' R' U R"},
+          {name:"Commutador largo",     moves:"M' U M U2 M' U M"},
+        ],
+        "Commutatores de corners":[
+          {name:"[R, U]  UFR→UBR→UBL", moves:"R U R' U'"},
+          {name:"3-ciclo corners U",    moves:"R U2 R' U' R U2 L' U R' U' L"},
+          {name:"3-ciclo corners 2",    moves:"R D R' U2 R D' R' U2"},
+          {name:"J-perm como comm",     moves:"R' U L' U2 R U' R' U2 L R"},
+          {name:"A-perm como comm",     moves:"x R' U R' D2 R U' R' D2 R2 x'"},
+          {name:"Niklas (comm)",        moves:"R U' L' U R' U' L"},
+        ],
+      }
+    },
+    "4BLD":{
+      desc:"Big BLD. Centros → wings (aristas dobles) → corners. Requiere M2/OP adaptado.",
+      puzzle:"4x4x4",
+      sections:{
+        "Centros 4BLD":[
+          {name:"[r2, U2] base",        moves:"r2 U2 r2' U2"},
+          {name:"3-ciclo diagonal",     moves:"r2 U r2' U2 r2 U r2'"},
+          {name:"Flip 2 centros",       moves:"r2 U' r2' U r2 U' r2'"},
+          {name:"Centro 3c lateral",    moves:"u R U R' u' R U R'"},
+          {name:"Centro adj inner",     moves:"r2 U2 r2' U2 r2 U2 r2'"},
+          {name:"Centro swap cross",    moves:"u2 R U2 R' u2 R U2 R'"},
+        ],
+        "Wings (aristas dobles)":[
+          {name:"Wing setup básico",    moves:"r U r' U2 r U r'"},
+          {name:"Wing con flip",        moves:"r U2 r' U2 r U2 r'"},
+          {name:"Wing 3-ciclo",         moves:"Rw U R' U' Rw' F R F'"},
+          {name:"Wing M2-target",       moves:"Rw' U M2 U' Rw"},
+          {name:"Wing adj commutator",  moves:"r U r' M2 r U' r'"},
+          {name:"Wing U2 basic",        moves:"r U2 r' U r U2 r'"},
+        ],
+        "Parity 4BLD":[
+          {name:"Parity — 1 wing solo", moves:"Rw U2 x Rw U2 Rw U2 Rw' U2 Lw U2 Rw' U2 Rw U2 Rw' U2 Rw'"},
+          {name:"Parity — centro",      moves:"r2 U2 r2 Uw2 r2 Uw2"},
+          {name:"Parity — wing-2",      moves:"Rw2 B2 U2 Lw U2 Rw' U2 Rw U2 F2 Rw F2 Lw' B2 Rw2"},
+        ],
+      }
+    },
+  }
+},
+
+// ──────────────────────────── MEGA ───────────────────────────
+"mega":{
+  label:"Megaminx", color:"#f97316",
+  sub:"LBL · CFOP Mega · OLL · PLL",
+  puzzle:"megaminx",
+  iconAlg:"R++ D-- R++ D-- R++ D--",
+  methods:{
+    "Layer by Layer Mega":{
+      desc:"Cara por cara. El método más accesible para Megaminx. Similar al método de capas en 3x3.",
+      puzzle:"megaminx",
+      sections:{
+        "Primera Capa Mega":[
+          {name:"Cuña derecha básica",   moves:"R++ D-- R-- D++ R--",tip:"Inserta cuña en el slot derecho."},
+          {name:"Cuña izquierda básica", moves:"L-- D++ L++ D-- L++",tip:"Inserta cuña en el slot izquierdo."},
+          {name:"Arista F2L derecha",    moves:"R++ D-- R-- D++ R--"},
+          {name:"Arista F2L izquierda",  moves:"L-- D++ L++ D-- L++"},
+          {name:"Cuña superior",         moves:"U R++ D-- R-- U' R++ D-- R--"},
+          {name:"Cuña flip",             moves:"R++ D-- D-- R-- R++"},
+        ],
+        "Segunda Capa Mega":[
+          {name:"Insertar cuña 2L-R",    moves:"U' L-- D++ L++ U L-- D++ L++"},
+          {name:"Insertar cuña 2L-L",    moves:"U R++ D-- R-- U' R++ D-- R--"},
+          {name:"Cuña 2L mal colocada",  moves:"R++ D-- R-- U R++ D-- R-- U'"},
+          {name:"Flip cuña en slot",     moves:"R++ D-- R-- D++ R-- U' R++ D--"},
+        ],
+        "OLL Megaminx":[
+          {name:"OLL Cruz Mega",          moves:"F R U R' U' F'",          tip:"Adaptar con movimientos Mega."},
+          {name:"OLL Dot Mega",           moves:"F R U R' U' F' f R U R' U' f'"},
+          {name:"OLL Sune Mega",          moves:"R U R' U R U2 R'"},
+          {name:"OLL AS Mega",            moves:"R U2 R' U' R U' R'"},
+          {name:"OLL Pi Mega",            moves:"R U2 R2 U' R2 U' R2 U2 R"},
+          {name:"OLL T-shape Mega",       moves:"R U R' U' R' F R F'"},
+          {name:"OLL L-shape Mega",       moves:"F R U' R' U' R U R' F'"},
+        ],
+        "PLL Megaminx":[
+          {name:"T-Perm Mega",            moves:"R U R' U' R' F R2 U' R' U' R U R' F'"},
+          {name:"Y-Perm Mega",            moves:"F R U' R' U' R U R' F' R U R' U' R' F R F'"},
+          {name:"Ua-Perm Mega",           moves:"R U R' U' R' U2 R U R' U' R2 U' R'"},
+          {name:"Ub-Perm Mega",           moves:"R2 U R U R' U' R' U' R' U R'"},
+          {name:"H-Perm Mega",            moves:"M2 U M2 U2 M2 U M2"},
+          {name:"V-Perm Mega",            moves:"R' U R' d' R' F' R2 U' R' U R' F R F"},
+          {name:"Z-Perm Mega",            moves:"M' U M2 U M2 U M' U2 M2"},
+          {name:"A-Perm Mega",            moves:"x R' U R' D2 R U' R' D2 R2 x'"},
+          {name:"E-Perm Mega",            moves:"x' R U' R' D R U R' D' R U R' D R U' R' D'"},
+        ],
+      }
+    },
+    "CFOP Megaminx":{
+      desc:"Aplicar metodología CFOP al Megaminx. Para speedsolving avanzado.",
+      puzzle:"megaminx",
+      sections:{
+        "F2L Mega CFOP":[
+          {name:"F2L básico R",    moves:"R++ D-- R-- D++ R--"},
+          {name:"F2L básico L",    moves:"L-- D++ L++ D-- L++"},
+          {name:"F2L d-move",      moves:"R++ D-- R-- d++ R-- d-- R++"},
+          {name:"F2L star edge",   moves:"U R++ D-- R-- U' R++ D-- R-- R++"},
+        ],
+        "Sledge y triggers Mega":[
+          {name:"Trigger básico R++",   moves:"R++ U R-- U'"},
+          {name:"Sexy move Mega",       moves:"R++ U R-- U'",             tip:"Equivalente al sexy move de 3x3."},
+          {name:"Sune Mega",            moves:"R++ U R-- U R++ U2 R--"},
+          {name:"Anti-Sune Mega",       moves:"R++ U2 R-- U' R++ U' R--"},
+        ],
+      }
+    },
+  }
+},
+
+// ──────────────────────────── PYRA ───────────────────────────
+"pyra":{
+  label:"Pyraminx", color:"#84cc16",
+  sub:"LBL · V-first · L4E (11 casos)",
+  puzzle:"pyraminx",
+  iconAlg:"R U R' U R U' R'",
+  methods:{
+    "LBL Pyraminx":{
+      desc:"Tips → cara → Last Layer (8 casos). El método estándar para Pyraminx.",
+      puzzle:"pyraminx",
+      sections:{
+        "Tips (triviales)":[
+          {name:"Tip URF",               moves:"u"},
+          {name:"Tip ULF",               moves:"l"},
+          {name:"Tip URB",               moves:"r"},
+          {name:"Tip base",              moves:"b"},
+        ],
+        "Primera cara":[
+          {name:"Arista frontal básica", moves:"R U R' U R U' R'",       tip:"Inserta arista en cara frontal."},
+          {name:"Arista desde top",      moves:"U R U' R'"},
+          {name:"Arista flip",           moves:"R U' R' U R U R'"},
+          {name:"Arista back-left",      moves:"l' U l U' l' U l"},
+          {name:"Arista back-right",     moves:"r U' r' U r U r'"},
+        ],
+        "Last Layer — 8 casos":[
+          {name:"LL #1 — Skip",          moves:"—"},
+          {name:"LL #2 — Sune-R",        moves:"R U R' U R U' R'"},
+          {name:"LL #3 — Sune-L",        moves:"L' U' L U' L' U L"},
+          {name:"LL #4 — Pi",            moves:"R U R' U' L' U' L"},
+          {name:"LL #5 — Anti-Sune-R",   moves:"R U' R' U R U' R' U R U R'"},
+          {name:"LL #6 — Anti-Sune-L",   moves:"L' U L U' L' U L U' L' U' L"},
+          {name:"LL #7 — H",             moves:"R U R' U R U R' U' R U' R'"},
+          {name:"LL #8 — T",             moves:"R U' R' U R U R' U R U' R'"},
+        ],
+      }
+    },
+    "V-First Pyraminx":{
+      desc:"Primero el V de abajo, luego la cara frontal, y al final el LL.",
+      puzzle:"pyraminx",
+      sections:{
+        "V-First setup":[
+          {name:"V básico R",            moves:"r' R U R'"},
+          {name:"V básico L",            moves:"l L' U' L"},
+          {name:"V diagonal",            moves:"R' U R U' R' U R"},
+          {name:"V flip",                moves:"R U' R' U R U R'"},
+        ],
+        "Cara frontal V-First":[
+          {name:"Frontal desde top R",   moves:"U R U' R'"},
+          {name:"Frontal desde top L",   moves:"U' L' U L"},
+          {name:"Frontal invertida",     moves:"R' U R"},
+          {name:"Frontal con U",         moves:"U2 R U R' U'"},
+        ],
+      }
+    },
+    "L4E — 11 casos":{
+      desc:"Last 4 Edges. Resuelve las 4 aristas del LL de una vez. Para sub-5.",
+      puzzle:"pyraminx",
+      sections:{
+        "L4E":[
+          {name:"L4E #01 — Skip",        moves:"—"},
+          {name:"L4E #02",               moves:"R U R' U R U2 R'"},
+          {name:"L4E #03",               moves:"U R U' R' U' R U R'"},
+          {name:"L4E #04",               moves:"R U' R' U2 R U' R'"},
+          {name:"L4E #05",               moves:"R U2 R' U R U' R'"},
+          {name:"L4E #06",               moves:"U R U R' U R U' R' U R U2 R'"},
+          {name:"L4E #07",               moves:"R' U R U2 R' U2 R"},
+          {name:"L4E #08 — H",           moves:"R U' R' U R U R' U R U2 R'"},
+          {name:"L4E #09 — Z",           moves:"R U R' U2 R' U R U' R' U' R"},
+          {name:"L4E #10",               moves:"R U R' U' R U' R'"},
+          {name:"L4E #11",               moves:"R U2 R' U' R U R'"},
+        ],
+      }
+    },
+  }
+},
+
+// ──────────────────────────── SKEWB ──────────────────────────
+"skewb":{
+  label:"Skewb", color:"#14b8a6",
+  sub:"Sarah's Advanced · 8 LL cases",
+  puzzle:"skewb",
+  iconAlg:"R L' R' L R L' R'",
+  methods:{
+    "Sarah's Advanced":{
+      desc:"Primera cara → OBL → 8 casos de Last Layer Skewb. El método más popular.",
+      puzzle:"skewb",
+      sections:{
+        "Primera cara":[
+          {name:"Corner frontal básico",  moves:"R' L R L'",              tip:"Mueve corner a la cara frontal."},
+          {name:"Corner lateral",         moves:"L R' L' R"},
+          {name:"Corner flip-in",         moves:"R' L R L' R' L R L'"},
+          {name:"Corner top-place",       moves:"L R' L' R L R' L'"},
+          {name:"Cara completa básica",   moves:"R L' R' L"},
+        ],
+        "OBL — Opposite Bottom Layer":[
+          {name:"OBL — Skip",            moves:"—"},
+          {name:"OBL #2",                moves:"R' L R L' R' L R L'"},
+          {name:"OBL #3 — 3 corners",    moves:"L R' L' R L R' L' R"},
+          {name:"OBL #4",                moves:"R' L R L' U R' L R L' U'"},
+          {name:"OBL #5 — adj",          moves:"R L' R' L U' R L' R' L U"},
+          {name:"OBL #6 — swap",         moves:"L R' L' R U L R' L' R U'"},
+        ],
+        "LL — Last Layer (8 casos)":[
+          {name:"LL #1 — Skip",          moves:"—"},
+          {name:"LL #2 — Sune-R",        moves:"R' L R L' R' L R L'"},
+          {name:"LL #3 — Sune-L",        moves:"L R' L' R L R' L' R"},
+          {name:"LL #4 — Headlights-F",  moves:"R' L R L' B' R B R'"},
+          {name:"LL #5 — Headlights-B",  moves:"B R' B' R L R' L' R"},
+          {name:"LL #6 — Chameleon-adj", moves:"R' L R L' U' R' L R L' U"},
+          {name:"LL #7 — Chameleon-opp", moves:"R L R' L' U R L R' L' U'"},
+          {name:"LL #8 — Pi",            moves:"R' L R L' R' L R L' R' L R L'"},
+        ],
+      }
+    },
+    "Beginner Skewb":{
+      desc:"Método de principiante para Skewb. Cara por cara con pocas piezas.",
+      puzzle:"skewb",
+      sections:{
+        "Primera cara principiante":[
+          {name:"Corner básico R",        moves:"R' L R L'"},
+          {name:"Corner básico L",        moves:"L R' L' R"},
+          {name:"Corner desde bottom",    moves:"B' R B R'"},
+          {name:"Center ajuste",          moves:"R' L R L' R' L R L'"},
+        ],
+        "Segunda cara":[
+          {name:"3-ciclo corners",        moves:"R' L R L' R' L R L'"},
+          {name:"Swap adj corners",       moves:"L R' L' R L R' L' R"},
+          {name:"Swap opp corners",       moves:"R L' R' L R L' R' L"},
+        ],
+      }
+    },
+  }
+},
+
+// ──────────────────────────── SQ1 ────────────────────────────
+"sq1":{
+  label:"Square-1", color:"#d946ef",
+  sub:"CSP · PBL · Paridad",
+  puzzle:"square1",
+  iconAlg:"/ (3,0) / (-3,0)",
+  methods:{
+    "CSP + PBL":{
+      desc:"Cubeshape → Parity → CP → EP. El método estándar de Square-1.",
+      puzzle:"square1",
+      sections:{
+        "Cubeshape":[
+          {name:"Cube → Cube",           moves:"/ (6,0) / (0,-1) / (-1,-1) / (3,0) / (-3,0) / (0,3) / (-1,-1) / (0,-6)"},
+          {name:"Kite → Square",         moves:"/ (3,0) / (-3,0) / (0,3) / (0,-3) /"},
+          {name:"Barrel → Square",       moves:"(1,0) / (0,-2) / (2,0) / (0,1) / (-3,0) / (0,-1) / (1,0)"},
+          {name:"Shield → Square",       moves:"/ (-3,0) / (3,0) / (0,-3) / (0,3)"},
+          {name:"L-shape → Square",      moves:"(0,1) / (0,-2) / (1,0) / (0,1) / (-1,0)"},
+          {name:"Scallop → Square",      moves:"/ (1,0) / (0,-1) / (2,0) / (0,-2) / (-3,0)"},
+          {name:"Fist → Square",         moves:"(1,0) / (0,1) / (3,0) / (0,-3) / (-3,0) / (0,3)"},
+        ],
+        "Parity Fix":[
+          {name:"Parity Algorithm",      moves:"/ (3,3) / (-1,0) / (0,-1) / (-3,3) / (0,-3) / (-3,0) / (0,3) / (3,0) / (-3,0) / (0,3) / (0,-1) / (-1,0)"},
+          {name:"Parity alternativo",    moves:"(1,0) / (-1,-2) / (4,0) / (0,-3) / (0,3) / (-4,0) / (2,1) / (0,-6)"},
+        ],
+        "CP — Corner Permutation":[
+          {name:"Adj corner swap",       moves:"/ (3,0) / (-3,0) / (0,3) / (0,-3) / (3,0) / (-3,0)"},
+          {name:"Diag corner swap",      moves:"(3,0) / (0,3) / (-3,0) / (0,-3) / (3,0) / (0,3) / (-3,0) / (0,-3)"},
+          {name:"CP extra-1",            moves:"(0,3) / (-3,0) / (3,0) / (0,-3)"},
+        ],
+        "EP — Edge Permutation":[
+          {name:"Ua edges",              moves:"/ (0,3) / (0,-3) / (0,3) / (3,0) / (-3,0)"},
+          {name:"Ub edges",              moves:"/ (0,-3) / (0,3) / (0,-3) / (-3,0) / (3,0)"},
+          {name:"H edges",               moves:"/ (3,0) / (0,3) / (-3,0) / (0,-3) / (3,0) / (0,3) / (-3,0) / (0,-3)"},
+          {name:"Z edges",               moves:"/ (1,-2) / (-3,0) / (0,3) / (3,0) / (0,-3) / (-1,2)"},
+          {name:"EP T-type",             moves:"/ (0,3) / (-3,3) / (0,-3) / (3,0) / (-3,0)"},
+        ],
+      }
+    },
+    "Lin Method":{
+      desc:"Variante avanzada de CSP con cubeshape más eficiente.",
+      puzzle:"square1",
+      sections:{
+        "Lin CP":[
+          {name:"Lin CP adj",            moves:"/ (3,3) / (0,-3) / (0,3) / (-3,-3) /"},
+          {name:"Lin CP diag",           moves:"(3,0) / (0,3) / (-6,0) / (0,-3) / (3,0)"},
+          {name:"Lin EP Ua",             moves:"/ (0,3) / (-3,0) / (3,0) / (0,-3) / (3,0)"},
+          {name:"Lin EP Ub",             moves:"/ (0,-3) / (3,0) / (-3,0) / (0,3) / (-3,0)"},
+        ],
+      }
+    },
+  }
+},
+
+// ──────────────────────────── CLOCK ──────────────────────────
+"clock":{
+  label:"Clock", color:"#64748b",
+  sub:"Algorithmic · Hansen",
+  puzzle:"clock",
+  iconAlg:"",
+  methods:{
+    "Algorithmic Clock":{
+      desc:"Fase por fase usando los 4 dials y los pins. El puzzle más diferente de todos.",
+      puzzle:"clock",
+      sections:{
+        "Fase 1 — Esquinas frontales":[
+          {name:"Ajustar UR corner",     moves:"UR pin + girar UR dial n horas"},
+          {name:"Ajustar UL corner",     moves:"UL pin + girar UL dial n horas"},
+          {name:"Ajustar DR corner",     moves:"DR pin + girar DR dial n horas"},
+          {name:"Ajustar DL corner",     moves:"DL pin + girar DL dial n horas"},
+        ],
+        "Fase 2 — Aristas frontales":[
+          {name:"Arista U",              moves:"U pin up + girar UR+UL dials"},
+          {name:"Arista R",              moves:"R pin up + girar UR+DR dials"},
+          {name:"Arista D",              moves:"D pin up + girar DR+DL dials"},
+          {name:"Arista L",              moves:"L pin up + girar UL+DL dials"},
+          {name:"Centro",                moves:"Todos los pines + girar todo"},
+        ],
+        "Fase 3 — Cara trasera":[
+          {name:"Rotar cubo x2",         moves:"x2"},
+          {name:"Repetir Fases 1+2",     moves:"Mismo procedimiento cara trasera"},
+        ],
+      }
+    },
+    "Hansen Method":{
+      desc:"Método avanzado para Clock. Resuelve la cara trasera durante la frontal.",
+      puzzle:"clock",
+      sections:{
+        "Hansen setup":[
+          {name:"Setup pines óptimo",    moves:"Usar pins UR+DL para la mayoria"},
+          {name:"Paso 1 — UR+DL up",     moves:"UR+DL pins up"},
+          {name:"Paso 2 — Ajuste cruz",  moves:"Girar hasta que marcadores coincidan"},
+          {name:"Paso 3 — flip+adjust",  moves:"Flip y ajustar cara trasera"},
+        ],
+      }
+    },
+  }
+},
+
+}; // fin DB
+
+// ═══════════════════════════════════════════════════════════
+// ESTADO
+// ═══════════════════════════════════════════════════════════
+let curCat=null, curMethod=null, modalAlg=null, modalPuzzle='3x3x3';
+
+// ═══════════════════════════════════════════════════════════
+// CONTEO
+// ═══════════════════════════════════════════════════════════
+function countAlgos(cat){
+    let n=0;
+    Object.values(DB[cat].methods).forEach(m=>{Object.values(m.sections).forEach(s=>{n+=s.length;});});
+    return n;
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER GRID — cubos reales con twisty-player
+// ═══════════════════════════════════════════════════════════
+function buildGrid(){
+    const grid=document.getElementById('cat-grid');
+    grid.innerHTML='';
+    ['3x3','2x2','4x4','5x5','oh','bld','mega','pyra','skewb','sq1','clock'].forEach(k=>{
+        const d=DB[k]; if(!d) return;
+        const card=document.createElement('div');
+        card.className='cat-card';
+        card.onclick=()=>showMethods(k);
+
+        // Cubo real con twisty-player
+        const iconWrap=document.createElement('div');
+        iconWrap.className='cube-icon-wrap';
+        const puzz=d.puzzle||'3x3x3';
+        const alg=d.iconAlg||'';
+        const tp=document.createElement('twisty-player');
+        tp.setAttribute('puzzle', puzz);
+        if(alg) tp.setAttribute('alg', alg);
+        tp.setAttribute('background','none');
+        tp.setAttribute('control-panel','none');
+        tp.setAttribute('hint-facelets','none');
+        tp.setAttribute('visualization','3D');
+        tp.style.cssText='width:90px;height:90px;pointer-events:none;';
+        iconWrap.appendChild(tp);
+
+        card.appendChild(iconWrap);
+
+        const title=document.createElement('h3');
+        title.textContent=d.label;
+        card.appendChild(title);
+
+        const sub=document.createElement('div');
+        sub.className='cat-sub';
+        sub.textContent=d.sub;
+        card.appendChild(sub);
+
+        const count=document.createElement('div');
+        count.className='cat-count';
+        count.textContent=countAlgos(k)+' algoritmos';
+        card.appendChild(count);
+
+        grid.appendChild(card);
+    });
+}
+
+// ═══════════════════════════════════════════════════════════
+// VIEWS
+// ═══════════════════════════════════════════════════════════
+function setView(id){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));document.getElementById(id).classList.add('active');}
+
+function goCats(){curCat=null;curMethod=null;setView('v-cats');document.getElementById('search-panel').classList.add('hidden');document.getElementById('global-search').value='';}
+
+function showMethods(catKey){
+    curCat=catKey;
+    const d=DB[catKey];
+    document.getElementById('bc1').textContent=d.label;
+    document.getElementById('m-title').textContent=d.label;
+    document.getElementById('m-desc').textContent='Selecciona un método para ver los algoritmos con visualización 3D animada.';
+    const list=document.getElementById('m-list');
+    list.innerHTML='';
+    Object.keys(d.methods).forEach(mName=>{
+        const n=Object.values(d.methods[mName].sections).reduce((a,s)=>a+s.length,0);
+        const pill=document.createElement('button');
+        pill.className='method-pill';
+        pill.innerHTML=`<i class="fas fa-layer-group text-xs"></i>${mName} <span style="font-size:.65rem;opacity:.55;margin-left:4px">(${n})</span>`;
+        pill.onclick=()=>{document.querySelectorAll('.method-pill').forEach(p=>p.classList.remove('active'));pill.classList.add('active');showAlgos(mName);};
+        list.appendChild(pill);
+    });
+    setView('v-methods');
+}
+
+function goMethods(){if(curCat) showMethods(curCat);}
+
+function showAlgos(mName){
+    curMethod=mName;
+    const m=DB[curCat].methods[mName];
+    document.getElementById('bc2').textContent=DB[curCat].label;
+    document.getElementById('bc3').textContent=mName;
+    document.getElementById('a-title').textContent=mName;
+    document.getElementById('a-desc').textContent=m.desc||'';
+    renderAlgos(m.sections, m.puzzle||'3x3x3','');
+    document.getElementById('algo-search').value='';
+    setView('v-algos');
+}
+
+function renderAlgos(sections, puzz, filter){
+    const cont=document.getElementById('a-content');
+    cont.innerHTML='';
+    let total=0;
+    Object.entries(sections).forEach(([secName,items])=>{
+        const filtered=items.filter(a=>!filter||a.name.toLowerCase().includes(filter)||a.moves.toLowerCase().includes(filter));
+        if(!filtered.length) return;
+        total+=filtered.length;
+        const wrap=document.createElement('div');
+        const hdr=document.createElement('div');
+        hdr.className='section-header';
+        hdr.innerHTML=`<h4><i class="fas fa-chevron-right text-xs mr-1"></i>${hl(secName,filter)}</h4><span class="section-count">${filtered.length}</span>`;
+        wrap.appendChild(hdr);
+        const grid=document.createElement('div');
+        grid.className='algo-grid';
+        filtered.forEach(a=>grid.appendChild(buildCard(a,secName,puzz,filter)));
+        wrap.appendChild(grid);
+        cont.appendChild(wrap);
+    });
+    if(!total) cont.innerHTML=`<div class="text-slate-500 text-center py-12"><i class="fas fa-search text-3xl mb-3 block"></i>Sin resultados para "<strong class="text-white">${filter}</strong>"</div>`;
+}
+
+function buildCard(algo, secName, puzz, filter){
+    const none=isNoAlg(algo.moves);
+    const card=document.createElement('div');
+    card.className='algo-card';
+
+    // Head
+    const head=document.createElement('div');
+    head.className='algo-card-head';
+    head.innerHTML=`<span class="algo-case-name">${hl(algo.name,filter)}</span><span class="algo-section-tag">${secName.split('—')[0].trim().substring(0,20)}</span>`;
+    card.appendChild(head);
+
+    // Body
+    const body=document.createElement('div');
+    body.className='algo-card-body';
+
+    // Twisty column
+    const tcol=document.createElement('div');
+    tcol.className='algo-twisty-col';
+    if(!none){
+        const tp=makeTwistyEl(algo.moves, puzz, 114);
+        tcol.appendChild(tp);
+    } else {
+        tcol.appendChild(noVizDiv(114));
+    }
+    body.appendChild(tcol);
+
+    // Info column
+    const icol=document.createElement('div');
+    icol.className='algo-info-col';
+    const mbox=document.createElement('div');
+    mbox.className='algo-moves-box'+(none?' none-alg':'');
+    mbox.innerHTML=none?'Intuitivo / sin algoritmo fijo':hl(algo.moves,filter);
+    icol.appendChild(mbox);
+    if(algo.tip){const t=document.createElement('div');t.className='algo-tip';t.innerHTML=`<i class="fas fa-lightbulb text-yellow-400 mr-1"></i>${algo.tip}`;icol.appendChild(t);}
+    const actions=document.createElement('div');
+    actions.className='algo-actions';
+    if(!none){
+        const cb=document.createElement('button');cb.className='btn-copy';cb.innerHTML='<i class="fas fa-copy"></i>Copiar';cb.onclick=e=>{e.stopPropagation();copyAlg(cb,algo.moves);};
+        const db=document.createElement('button');db.className='btn-detail';db.innerHTML='<i class="fas fa-expand-alt"></i>Detalle';db.onclick=e=>{e.stopPropagation();openModal(algo,secName,puzz);};
+        actions.appendChild(cb);actions.appendChild(db);
+    }
+    icol.appendChild(actions);
+    body.appendChild(icol);
+    card.appendChild(body);
+    return card;
+}
+
+// ═══════════════════════════════════════════════════════════
+// MODAL
+// ═══════════════════════════════════════════════════════════
+function openModal(algo, secName, puzz){
+    modalAlg=algo.moves; modalPuzzle=puzz||'3x3x3';
+    document.getElementById('modal-name').textContent=algo.name;
+    document.getElementById('modal-section').textContent=`${DB[curCat].label} › ${curMethod} › ${secName}`;
+    document.getElementById('modal-moves').textContent=algo.moves;
+    const tipEl=document.getElementById('modal-tip');
+    if(algo.tip){tipEl.classList.remove('hidden');tipEl.innerHTML=`<i class="fas fa-lightbulb text-yellow-400 mr-1"></i>${algo.tip}`;}
+    else tipEl.classList.add('hidden');
+    document.getElementById('modal-tags').innerHTML=`
+        <span class="tag-chip tag-blue">${DB[curCat].label}</span>
+        <span class="tag-chip tag-amber">${curMethod}</span>
+        <span class="tag-chip tag-green">${secName}</span>
+    `;
+    const mt=document.getElementById('modal-twisty');
+    mt.setAttribute('puzzle', puzz||'3x3x3');
+    mt.setAttribute('alg', algo.moves);
+    mt.setAttribute('experimental-setup-anchor','end');
+    mt.setAttribute('background','none');
+    mt.setAttribute('control-panel','bottom-row');
+    mt.setAttribute('hint-facelets','floating');
+    document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal(){document.getElementById('modal-overlay').classList.remove('open');}
+function copyModal(){if(modalAlg) copyAlg(null,modalAlg);}
+
+// ═══════════════════════════════════════════════════════════
+// BÚSQUEDA GLOBAL
+// ═══════════════════════════════════════════════════════════
+document.getElementById('global-search').addEventListener('input',function(){
+    const q=this.value.trim().toLowerCase();
+    const panel=document.getElementById('search-panel');
+    if(!q){panel.classList.add('hidden');panel.innerHTML='';return;}
+    const res=[];
+    Object.entries(DB).forEach(([ck,cat])=>{Object.entries(cat.methods).forEach(([mn,m])=>{Object.entries(m.sections).forEach(([sn,items])=>{items.forEach(a=>{if(a.name.toLowerCase().includes(q)||a.moves.toLowerCase().includes(q)){res.push({ck,cat,mn,m,sn,a});}});});});});
+    panel.classList.remove('hidden');panel.innerHTML='';
+    if(!res.length){panel.innerHTML=`<div class="panel p-4 text-slate-500 text-center"><i class="fas fa-search mr-2"></i>Sin resultados para "<strong class="text-white">${q}</strong>".</div>`;return;}
+    const wrap=document.createElement('div');wrap.className='panel p-4 mb-4';
+    const info=document.createElement('div');info.className='text-sm text-slate-400 mb-4';
+    info.innerHTML=`<i class="fas fa-search mr-1"></i><strong>${res.length}</strong> resultado(s) para "<strong style="color:white">${q}</strong>"`;
+    wrap.appendChild(info);
+    const grid=document.createElement('div');grid.className='algo-grid';
+    res.slice(0,24).forEach(r=>{
+        // store curCat/curMethod temporarily for modal
+        const savedCat=curCat, savedMethod=curMethod;
+        curCat=r.ck; curMethod=r.mn;
+        const card=buildCard(r.a,r.sn,r.m.puzzle||'3x3x3',q);
+        curCat=savedCat; curMethod=savedMethod;
+        grid.appendChild(card);
+    });
+    wrap.appendChild(grid);
+    if(res.length>24){const m=document.createElement('div');m.className='text-xs text-slate-500 mt-3 text-center';m.textContent=`Mostrando 24 de ${res.length}. Afina la búsqueda.`;wrap.appendChild(m);}
+    panel.appendChild(wrap);
+});
+
+document.getElementById('algo-search').addEventListener('input',function(){
+    if(!curCat||!curMethod) return;
+    const m=DB[curCat].methods[curMethod];
+    renderAlgos(m.sections,m.puzzle||'3x3x3',this.value.trim().toLowerCase());
+});
+
+// ═══════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════
+function hl(t,f){if(!f) return String(t);const re=new RegExp(`(${f.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');return String(t).replace(re,'<mark>$1</mark>');}
+
+function copyAlg(btn,moves){
+    navigator.clipboard.writeText(moves).then(()=>{
+        if(btn){btn.innerHTML='<i class="fas fa-check"></i>Copiado';btn.classList.add('copied');setTimeout(()=>{btn.innerHTML='<i class="fas fa-copy"></i>Copiar';btn.classList.remove('copied');},1600);}
+        toast('Copiado: '+moves.slice(0,40)+(moves.length>40?'…':''));
+    });
+}
+
+function toast(msg){const el=document.getElementById('toast');document.getElementById('toast-msg').textContent=msg;el.classList.add('show');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),2200);}
+
+// ─ Dropdowns
+document.querySelectorAll('.dd-wrap').forEach(dd=>{
+    const btn=dd.querySelector('button'),menu=dd.querySelector('.dd-menu');
+    if(!btn||!menu) return;
+    btn.addEventListener('click',e=>{e.stopPropagation();const open=!menu.classList.contains('hidden');document.querySelectorAll('.dd-menu').forEach(m=>m.classList.add('hidden'));if(!open) menu.classList.remove('hidden');});
+});
+document.addEventListener('click',()=>document.querySelectorAll('.dd-menu').forEach(m=>m.classList.add('hidden')));
+
+// ─ Modal shortcuts
+document.addEventListener('keydown',e=>{if(e.key==='Escape') closeModal();});
+document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('modal-overlay')) closeModal();});
+
+// ─ Init
+buildGrid();
+</script>
+</body>
+</html>

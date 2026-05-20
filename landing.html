@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SpeedTimer — Domina el Cubo</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;600;800&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #080b10;
+  --surface: #0e1420;
+  --border: rgba(255,255,255,0.06);
+  --blue: #3b82f6;
+  --blue-dim: rgba(59,130,246,0.12);
+  --amber: #f59e0b;
+  --amber-dim: rgba(245,158,11,0.12);
+  --green: #10b981;
+  --text: #f0f4ff;
+  --muted: #6b7a9a;
+  --mono: 'JetBrains Mono', monospace;
+  --display: 'Barlow Condensed', sans-serif;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ── VIEWS ── */
+#view-landing { display: block; }
+#view-timer   { display: none; position: fixed; inset: 0; z-index: 200; background: var(--bg); flex-direction: column; }
+#view-timer.active { display: flex; }
+
+/* ── NAV ── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1.2rem 2.5rem;
+  background: rgba(8,11,16,0.88);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+
+.nav-logo {
+  display: flex; align-items: center; gap: 10px;
+  font-family: var(--display); font-size: 1.5rem; font-weight: 800;
+  letter-spacing: 0.02em; color: var(--text); text-decoration: none;
+  cursor: pointer;
+}
+
+.cube-icon {
+  width: 26px; height: 26px; flex-shrink: 0;
+  background: conic-gradient(#ff4444 0deg 90deg,#fff 90deg 180deg,#3b82f6 180deg 270deg,#f59e0b 270deg 360deg);
+  border-radius: 5px; transform: rotate(-12deg);
+}
+
+.nav-links { display: flex; gap: 2rem; list-style: none; }
+.nav-links a {
+  color: var(--muted); text-decoration: none; font-size: 11px;
+  letter-spacing: 0.1em; text-transform: uppercase; transition: color 0.2s;
+}
+.nav-links a:hover { color: var(--text); }
+
+.nav-cta {
+  background: var(--blue); color: #fff; border: none;
+  padding: 0.5rem 1.3rem; border-radius: 6px; cursor: pointer;
+  font-family: var(--mono); font-size: 11px; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase; text-decoration: none;
+  transition: opacity 0.2s, transform 0.15s;
+}
+.nav-cta:hover { opacity: 0.85; transform: translateY(-1px); }
+
+/* ── HERO ── */
+.hero {
+  min-height: 100vh;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 8rem 2.5rem 5rem;
+  position: relative; overflow: hidden;
+}
+
+.hero-grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(59,130,246,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59,130,246,0.035) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 90% 70% at 40% 50%, black 20%, transparent 75%);
+}
+
+.hero-glow {
+  position: absolute; top: 15%; left: 35%; transform: translateX(-50%);
+  width: 550px; height: 280px;
+  background: radial-gradient(ellipse, rgba(59,130,246,0.13) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.hero-content { position: relative; z-index: 1; max-width: 760px; }
+
+.hero-label {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--blue); margin-bottom: 1.5rem;
+  padding: 0.3rem 0.9rem;
+  border: 1px solid rgba(59,130,246,0.3); border-radius: 100px;
+}
+
+.hero-label::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--blue); animation: blink 2s infinite;
+}
+
+@keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.25; } }
+
+h1 {
+  font-family: var(--display);
+  font-size: clamp(3.8rem, 11vw, 7.5rem);
+  font-weight: 800; line-height: 0.9;
+  letter-spacing: -0.01em; margin-bottom: 1.5rem;
+}
+h1 em  { color: var(--amber); font-style: normal; }
+h1 span { color: var(--blue); }
+
+.hero-sub {
+  font-size: 14px; color: var(--muted); max-width: 460px;
+  line-height: 1.85; margin-bottom: 2.5rem; font-weight: 300;
+}
+
+.hero-actions { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
+
+.btn-primary {
+  background: var(--blue); color: #fff;
+  padding: 0.85rem 1.8rem; border-radius: 8px; border: none; cursor: pointer;
+  font-family: var(--mono); font-size: 13px; font-weight: 600;
+  letter-spacing: 0.04em; text-decoration: none;
+  display: inline-flex; align-items: center; gap: 8px;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(59,130,246,0.35); }
+
+.btn-outline {
+  color: var(--muted); text-decoration: none; font-size: 13px;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 0.85rem 1.6rem;
+  border: 1px solid var(--border); border-radius: 8px; cursor: pointer;
+  background: transparent; font-family: var(--mono);
+  transition: color 0.2s, border-color 0.2s;
+}
+.btn-outline:hover { color: var(--text); border-color: rgba(255,255,255,0.18); }
+
+/* ── TIMER MOCKUP (hero) ── */
+.timer-showcase {
+  position: absolute; right: 4rem; top: 50%; transform: translateY(-50%);
+  z-index: 1;
+}
+
+.timer-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; padding: 2rem 2.5rem; text-align: center;
+  min-width: 270px; position: relative; overflow: hidden;
+}
+.timer-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--blue), transparent);
+}
+
+.t-label { font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.4rem; }
+.t-display { font-family: var(--display); font-size: 3.8rem; font-weight: 800; color: var(--green); line-height: 1; margin-bottom: 0.2rem; }
+.t-meta { font-size: 11px; color: var(--muted); margin-bottom: 1.2rem; }
+
+.t-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1px; background: var(--border); border-radius: 8px; overflow: hidden; }
+.t-stat { background: rgba(14,20,32,0.95); padding: 0.55rem 0.4rem; text-align: center; }
+.t-stat b { font-size: 13px; font-weight: 600; display: block; }
+.t-stat small { font-size: 9px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; }
+
+/* ── TICKER ── */
+.ticker-wrap { overflow: hidden; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 0.7rem 0; white-space: nowrap; }
+.ticker { display: inline-block; animation: tick 45s linear infinite; font-size: 11px; letter-spacing: 0.1em; color: var(--muted); }
+.ticker span { margin: 0 2.5rem; }
+.ticker .hi { color: var(--blue); }
+@keyframes tick { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+
+/* ── STATS STRIP ── */
+.stats-strip {
+  border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+  padding: 2rem 2.5rem;
+  display: grid; grid-template-columns: repeat(4,1fr); gap: 2rem; text-align: center;
+}
+.strip-num { font-family: var(--display); font-size: 2.6rem; font-weight: 800; display: block; line-height: 1; }
+.strip-label { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 0.3rem; }
+
+/* ── FEATURES ── */
+.section { padding: 5.5rem 2.5rem; max-width: 1060px; margin: 0 auto; }
+.section-tag { font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--amber); margin-bottom: 0.8rem; display: block; }
+h2 { font-family: var(--display); font-size: clamp(2rem, 5vw, 3.3rem); font-weight: 800; line-height: 1.05; letter-spacing: -0.01em; }
+
+.features-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.5px; background: var(--border); border-radius: 12px; overflow: hidden; margin-top: 3rem; }
+.feat { background: var(--surface); padding: 1.8rem; transition: background 0.2s; }
+.feat:hover { background: #111827; }
+.feat-icon { width: 38px; height: 38px; border-radius: 9px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; font-size: 18px; }
+.feat-icon.b { background: var(--blue-dim); }
+.feat-icon.a { background: var(--amber-dim); }
+.feat-icon.g { background: rgba(16,185,129,.12); }
+.feat h3 { font-family: var(--display); font-size: 1.25rem; font-weight: 600; margin-bottom: 0.4rem; }
+.feat p { font-size: 12px; color: var(--muted); line-height: 1.7; }
+
+/* ── SCRAMBLE ── */
+.scramble-section { padding: 5.5rem 2.5rem; background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.scramble-inner { max-width: 1060px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 5rem; align-items: center; }
+.scramble-code { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 2rem; font-size: 13px; line-height: 2.1; color: var(--muted); position: relative; }
+.scramble-code::before { content:'SCRAMBLE'; position:absolute; top:-10px; left:16px; font-size:9px; letter-spacing:0.15em; text-transform:uppercase; color:var(--blue); background:var(--bg); padding:0 6px; }
+.sm { color: var(--text); }
+.sp { color: var(--amber); }
+.sd { color: var(--green); }
+
+/* ── CATEGORIES ── */
+.categories { padding: 5.5rem 2.5rem; max-width: 1060px; margin: 0 auto; }
+.cats-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(110px,1fr)); gap: 0.9rem; margin-top: 2.5rem; }
+.cat-badge { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.1rem 0.8rem; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
+.cat-badge:hover, .cat-badge.on { border-color: var(--blue); background: var(--blue-dim); }
+.cat-name { font-family: var(--display); font-size: 1.55rem; font-weight: 800; display: block; }
+.cat-label { font-size: 10px; color: var(--muted); letter-spacing: 0.07em; }
+
+/* ── CTA SECTION ── */
+.cta-section { padding: 8rem 2.5rem; text-align: center; position: relative; overflow: hidden; }
+.cta-glow { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:700px; height:350px; background:radial-gradient(ellipse,rgba(59,130,246,.1) 0%,transparent 70%); pointer-events:none; }
+.cta-section h2 { font-size: clamp(2.5rem,8vw,5rem); margin-bottom: 1rem; position: relative; z-index:1; }
+.cta-section p { font-size: 14px; color: var(--muted); margin-bottom: 2.5rem; position: relative; z-index:1; }
+.cta-btns { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; position: relative; z-index:1; }
+
+/* ── FOOTER ── */
+footer { border-top: 1px solid var(--border); padding: 2rem 2.5rem; display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 12px; }
+footer a { color: var(--muted); text-decoration: none; }
+footer a:hover { color: var(--text); }
+
+/* ── TIMER VIEW (Simplified) ── */
+#view-timer {
+  background: var(--bg);
+}
+
+#timer-topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.75rem 1.5rem;
+  background: rgba(8,11,16,0.9);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+#timer-topbar .nav-logo { font-size: 1.2rem; }
+
+.back-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: var(--muted); font-size: 12px; letter-spacing: 0.06em;
+  text-transform: uppercase; background: none; border: 1px solid var(--border);
+  border-radius: 6px; padding: 0.4rem 0.9rem; cursor: pointer;
+  font-family: var(--mono); transition: color 0.2s, border-color 0.2s;
+}
+.back-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.18); }
+
+.save-banner {
+  background: rgba(59,130,246,0.08); border-bottom: 1px solid rgba(59,130,246,0.2);
+  padding: 0.6rem 1.5rem;
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 12px; color: var(--muted); flex-shrink: 0;
+}
+
+.save-banner a {
+  color: var(--blue); text-decoration: none; font-weight: 600;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.save-banner a:hover { text-decoration: underline; }
+
+#timer-frame {
+  flex: 1; width: 100%; border: none;
+}
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp { from { opacity:0; transform:translateY(22px); } to { opacity:1; transform:translateY(0); } }
+.hero-label  { animation: fadeUp 0.5s ease both; }
+h1           { animation: fadeUp 0.5s 0.1s ease both; }
+.hero-sub    { animation: fadeUp 0.5s 0.2s ease both; }
+.hero-actions{ animation: fadeUp 0.5s 0.3s ease both; }
+.timer-showcase { animation: fadeUp 0.6s 0.4s ease both; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 900px) {
+  .timer-showcase { display: none; }
+  .features-grid { grid-template-columns: 1fr 1fr; }
+  .scramble-inner { grid-template-columns: 1fr; gap: 2rem; }
+  .stats-strip { grid-template-columns: repeat(2,1fr); }
+}
+@media (max-width: 560px) {
+  nav { padding: 1rem 1.2rem; }
+  .nav-links { display: none; }
+  .features-grid { grid-template-columns: 1fr; }
+  .hero { padding: 7rem 1.2rem 4rem; }
+  .section, .categories { padding: 4rem 1.2rem; }
+  .scramble-section { padding: 4rem 1.2rem; }
+  .cta-section { padding: 5rem 1.2rem; }
+  footer { flex-direction: column; gap: 0.8rem; text-align: center; }
+}
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════
+     VIEW: LANDING PAGE
+════════════════════════════════════ -->
+<div id="view-landing">
+
+  <!-- NAV -->
+  <nav>
+    <div class="nav-logo" onclick="goLanding()">
+      <div class="cube-icon"></div>
+      SpeedTimer
+    </div>
+    <ul class="nav-links">
+      <li><a href="#features">Funciones</a></li>
+      <li><a href="#categorias">Categorías</a></li>
+      <li><a href="login.html">Entrar</a></li>
+    </ul>
+    <a href="login.html" class="nav-cta">Iniciar sesión →</a>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-grid"></div>
+    <div class="hero-glow"></div>
+
+    <div class="hero-content">
+      <div class="hero-label">Cronómetro para speedcubers</div>
+
+      <h1>
+        CADA<br>
+        SEGUNDO<br>
+        <em>CUENTA.</em>
+      </h1>
+
+      <p class="hero-sub">
+        Registra tus tiempos, analiza tu progreso y mejora tus PBs con el cronómetro más preciso para cubo Rubik.
+      </p>
+
+      <div class="hero-actions">
+        <a href="login.html" class="btn-primary">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Iniciar sesión →
+        </a>
+        <a href="register.html" class="btn-outline">
+          Registrarse →
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+    </div>
+
+    <!-- Timer mockup decorativo -->
+    <div class="timer-showcase">
+      <div class="timer-card">
+        <div class="t-label">3×3×3 — WCA</div>
+        <div class="t-display" id="hero-timer">0:07.34</div>
+        <div class="t-meta">Space para iniciar / detener</div>
+        <div class="t-stats">
+          <div class="t-stat"><b>8.21</b><small>Ao5</small></div>
+          <div class="t-stat"><b>7.89</b><small>Ao12</small></div>
+          <div class="t-stat"><b style="color:var(--amber)">6.81</b><small>PB</small></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TICKER con RÉCORDS MUNDIALES ACTUALIZADOS WCA -->
+  <div class="ticker-wrap">
+    <div class="ticker" id="ticker-inner">
+      <span>🏆 WR 3x3: 2.76s (Teodor Zajder, Polonia)</span>
+      <span class="hi">// Average 3x3: 3.71s (Xuanyi Geng, China)</span>
+      
+      <span>🏆 WR 2x2: 0.39s (Ziyu Ye, China)</span>
+      <span class="hi">// Average 2x2: 0.86s (Sujan Feist, EE. UU.)</span>
+      
+      <span>🏆 WR 4x4: 15.18s (Tymon Kolasiński, Polonia)</span>
+      <span class="hi">// Average 4x4: 18.56s (Tymon Kolasiński)</span>
+      
+      <span>🏆 WR 5x5: 29.49s (Tymon Kolasiński)</span>
+      <span class="hi">// Average 5x5: 33.73s (Tymon Kolasiński)</span>
+      
+      <span>🏆 WR 6x6: 57.69s (Max Park, EE. UU.)</span>
+      <span class="hi">// Mean 6x6: 1:04.94 (Lim Hung, Malasia)</span>
+      
+      <span>🏆 WR 7x7: 1:32.92 (Lim Hung, Malasia)</span>
+      <span class="hi">// Mean 7x7: 1:36.86 (Max Park, EE. UU.)</span>
+      
+      <span>🏆 WR Pyraminx: 0.73s (Simon Kellum, EE. UU.)</span>
+      <span class="hi">// Average Pyra: 1.14s (Lingkun Jiang, China)</span>
+      
+      <span>🏆 WR Megaminx: 21.85s (Timofei Tarasenko, Rusia)</span>
+      <span class="hi">// Average Mega: 24.38s (Timofei Tarasenko)</span>
+      
+      <span>🏆 WR Skewb: 0.73s (Vojtěch Grohmann, Chequia)</span>
+      <span class="hi">// Average Skewb: 1.37s (Ignacy Samselski, Polonia)</span>
+      
+      <span>🏆 WR Square-1: 3.40s (Hassan Khanani, EE. UU.)</span>
+      <span class="hi">// Average SQ-1: 4.63s (Sameer Aggarwal)</span>
+      
+      <span>🏆 WR Clock: 1.53s (Lachlan Gibson, Australia)</span>
+      <span class="hi">// Average Clock: 2.24s (Brendyn Dunagan)</span>
+      
+      <span>🏆 WR 3x3 OH: 5.66s (Dhruva Sai Meruva, India)</span>
+      <span class="hi">// Average OH: 7.72s (Luke Garrett, EE. UU.)</span>
+      
+      <span>🏆 WR 3x3 BLD: 11.67s (Charlie Eggins, Australia)</span>
+      <span class="hi">// Mean BLD: 14.05s (Charlie Eggins/Tommy Cherry)</span>
+      
+      <span>🏆 WR Multi-BLD: 63/65 (58:23) Graham Siggins (EE. UU.)</span>
+      <span class="hi">// WR FMC: 16 mov. (Tronto/Bryant/Libby/J. Brown)</span>
+    </div>
+  </div>
+
+  <!-- STATS STRIP -->
+  <div class="stats-strip">
+    <div><span class="strip-num">100%</span><div class="strip-label">Precisión WCA</div></div>
+    <div><span class="strip-num">17+</span><div class="strip-label">Categorías oficiales</div></div>
+    <div><span class="strip-num">∞</span><div class="strip-label">Tiempos locales</div></div>
+    <div><span class="strip-num">0ms</span><div class="strip-label">Latencia</div></div>
+  </div>
+
+  <!-- FEATURES -->
+  <div class="section" id="features">
+    <div>
+      <span class="section-tag">// Funciones</span>
+      <h2>TODO LO QUE UN<br>SPEEDCUBER NECESITA</h2>
+    </div>
+    <div class="features-grid">
+      <div class="feat">
+        <div class="feat-icon b">⏱</div>
+        <h3>Timer de precisión</h3>
+        <p>Barra espaciadora o pantalla táctil. Milisegundos exactos sin ningún lag.</p>
+      </div>
+      <div class="feat">
+        <div class="feat-icon a">🔀</div>
+        <h3>Scrambles WCA</h3>
+        <p>Algoritmos de mezcla oficiales generados automáticamente por categoría.</p>
+      </div>
+      <div class="feat">
+        <div class="feat-icon g">📊</div>
+        <h3>Estadísticas en vivo</h3>
+        <p>Ao5, Ao12, Ao50, mejor tiempo y media de sesión calculados al instante.</p>
+      </div>
+      <div class="feat">
+        <div class="feat-icon b">⚡</div>
+        <h3>Penalizaciones</h3>
+        <p>Registra +2 y DNF con un toque. El historial se actualiza automáticamente.</p>
+      </div>
+      <div class="feat">
+        <div class="feat-icon a">💾</div>
+        <h3>Guardado local</h3>
+        <p>Sin necesidad de cuenta. Tus tiempos se guardan en el dispositivo al instante.</p>
+      </div>
+      <div class="feat">
+        <div class="feat-icon g">☁️</div>
+        <h3>Sincronización en la nube</h3>
+        <p>Crea una cuenta gratis para acceder a tus tiempos desde cualquier lugar.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCRAMBLE SECTION -->
+  <section class="scramble-section">
+    <div class="scramble-inner">
+      <div>
+        <span class="section-tag">// Scrambles inteligentes</span>
+        <h2>MEZCLAS<br>OFICIALES<br><span style="color:var(--blue)">WCA</span></h2>
+        <p style="color:var(--muted);font-size:12px;margin-top:1rem;line-height:1.85;max-width:340px">
+          Cada scramble sigue los estándares de la World Cube Association. Practica exactamente como en competencia.
+        </p>
+      </div>
+      <div class="scramble-code">
+        <span class="sm">R</span> <span class="sp">U'</span> <span class="sd">F2</span> <span class="sm">L</span> <span class="sp">B'</span> <span class="sm">R2</span> <span class="sd">D2</span><br>
+        <span class="sp">U'</span> <span class="sm">R</span> <span class="sp">F'</span> <span class="sd">U2</span> <span class="sm">L</span> <span class="sp">D'</span> <span class="sm">B</span><br>
+        <span class="sd">R2</span> <span class="sm">F</span> <span class="sp">L'</span> <span class="sd">U2</span> <span class="sm">B</span> <span class="sp">D'</span> <span class="sm">R</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- CATEGORIES -->
+  <section class="categories" id="categorias">
+    <span class="section-tag">// Categorías</span>
+    <h2>PARA CADA CUBO</h2>
+    <div class="cats-grid">
+      <div class="cat-badge on"><span class="cat-name">3×3</span><span class="cat-label">Standard</span></div>
+      <div class="cat-badge"><span class="cat-name">2×2</span><span class="cat-label">Pocket</span></div>
+      <div class="cat-badge"><span class="cat-name">4×4</span><span class="cat-label">Revenge</span></div>
+      <div class="cat-badge"><span class="cat-name">5×5</span><span class="cat-label">Professor</span></div>
+      <div class="cat-badge"><span class="cat-name">6×6</span><span class="cat-label">V-Cube</span></div>
+      <div class="cat-badge"><span class="cat-name">7×7</span><span class="cat-label">V-Cube 7</span></div>
+      <div class="cat-badge"><span class="cat-name">OH</span><span class="cat-label">One-Handed</span></div>
+      <div class="cat-badge"><span class="cat-name">BLD</span><span class="cat-label">Blindfold</span></div>
+      <div class="cat-badge"><span class="cat-name">MBLD</span><span class="cat-label">Multi-BLD</span></div>
+      <div class="cat-badge"><span class="cat-name">Pyra</span><span class="cat-label">Pyraminx</span></div>
+      <div class="cat-badge"><span class="cat-name">Mega</span><span class="cat-label">Megaminx</span></div>
+      <div class="cat-badge"><span class="cat-name">Skwb</span><span class="cat-label">Skewb</span></div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section">
+    <div class="cta-glow"></div>
+    <h2>¿LISTO PARA<br><span style="color:var(--blue)">BAJAR</span> TU PB?</h2>
+    <p>Empieza ahora sin registro, o crea una cuenta para guardar tus tiempos en la nube.</p>
+    <div class="cta-btns">
+      <a href="login.html" class="btn-primary" style="font-size:14px;padding:0.95rem 2.2rem">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Iniciar sesión →
+      </a>
+      <a href="register.html" class="btn-outline" style="font-size:14px;padding:0.95rem 2rem">
+        Registrarse gratis →
+      </a>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="nav-logo" style="font-size:1.1rem;cursor:default">
+      <div class="cube-icon" style="width:20px;height:20px"></div>
+      SpeedTimer
+    </div>
+    <div>
+      <a href="login.html">Iniciar sesión</a> &nbsp;·&nbsp;
+      <a href="register.html">Crear cuenta</a>
+    </div>
+    <div>Hecho para speedcubers 🏆</div>
+  </footer>
+
+</div><!-- /view-landing -->
+
+
+<!-- ════════════════════════════════════
+     VIEW: CRONÓMETRO LOCAL (Simplificado)
+════════════════════════════════════ -->
+<div id="view-timer">
+
+  <div id="timer-topbar">
+    <div class="nav-logo" onclick="goLanding()" title="Volver a la landing">
+      <div class="cube-icon"></div>
+      SpeedTimer
+    </div>
+
+    <button class="back-btn" onclick="goLanding()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      Salir del timer
+    </button>
+  </div>
+
+  <!-- Banner invitando a crear cuenta -->
+  <div class="save-banner">
+    <span>⚡ Modo local — tus tiempos se guardan en este dispositivo</span>
+    <a href="register.html">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+      Crear cuenta para sincronizar en la nube
+    </a>
+  </div>
+
+  <!-- El cronómetro real cargado en iframe -->
+  <iframe
+    id="timer-frame"
+    src="index.html"
+    title="SpeedTimer — Cronómetro"
+    allow="autoplay"
+  ></iframe>
+
+</div><!-- /view-timer -->
+
+
+<script>
+  // ── Timer decorativo del hero ──
+  let t = 7340, dir = 1;
+  const timerEl = document.getElementById('hero-timer');
+  function fmt(ms) {
+    const m  = Math.floor(ms / 60000);
+    const s  = Math.floor((ms % 60000) / 1000);
+    const cs = Math.floor((ms % 1000) / 10);
+    return m + ':' + String(s).padStart(2,'0') + '.' + String(cs).padStart(2,'0');
+  }
+  setInterval(() => {
+    t += dir * (Math.random() * 18 - 7);
+    if (t > 12500) dir = -1;
+    if (t < 4800)  dir =  1;
+    if (timerEl) timerEl.textContent = fmt(Math.max(0, t));
+  }, 80);
+
+  // ── Categorías toggle ──
+  document.querySelectorAll('.cat-badge').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.cat-badge').forEach(x => x.classList.remove('on'));
+      b.classList.add('on');
+    });
+  });
+
+  // ── Navegación (Simplificada, ya que los botones llevan a login/register) ──
+  function openTimer() {
+    // Función legacy, redirige a login ahora
+    window.location.href = "login.html";
+  }
+
+  function goLanding() {
+    document.getElementById('view-timer').classList.remove('active');
+    document.getElementById('view-landing').style.display = 'block';
+    document.title = 'SpeedTimer — Domina el Cubo';
+    if (location.hash === '#timer') history.back();
+  }
+
+  // Manejar botón "atrás" del navegador
+  window.addEventListener('popstate', (e) => {
+    if (!e.state || e.state.view !== 'timer') {
+      document.getElementById('view-timer').classList.remove('active');
+      document.getElementById('view-landing').style.display = 'block';
+      document.title = 'SpeedTimer — Domina el Cubo';
+    }
+  });
+
+  // Si se accede directamente con #timer en la URL, mostrar mensaje o redirigir
+  if (location.hash === '#timer') {
+    // En lugar de abrir el timer directamente, mostramos que debe iniciar sesión
+    alert("Para usar el cronómetro, primero inicia sesión o regístrate.");
+    window.location.href = "login.html";
+  }
+</script>
+</body>
+</html>

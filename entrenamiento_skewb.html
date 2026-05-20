@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpeedTimer - Entrenamiento Skewb</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #22c55e; /* Verde para Skewb */
+            --accent-color: #f97316;   /* Naranja */
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: white;
+        }
+
+        .panel {
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid var(--primary-color);
+            border-radius: 12px;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+        }
+
+        .metronome-active {
+            animation: pulse 0.5s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { box-shadow: 0 0 5px var(--accent-color); }
+            to { box-shadow: 0 0 20px var(--accent-color); }
+        }
+
+        .heatmap-cell {
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .heatmap-cell:hover .heatmap-tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .heatmap-tooltip {
+            visibility: hidden;
+            width: 120px;
+            background-color: rgba(0,0,0,0.9);
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 12px;
+        }
+
+        .phase-btn {
+            background-color: rgba(34, 197, 94, 0.2); /* Verde claro */
+            border: 1px solid var(--primary-color);
+            transition: all 0.3s ease;
+        }
+        .phase-btn:hover {
+            background-color: rgba(34, 197, 94, 0.4);
+        }
+        .phase-active {
+            background-color: var(--primary-color) !important;
+            color: white;
+            box-shadow: 0 0 0 3px var(--accent-color);
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(34, 197, 94, 0.5);
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            transition: all 0.3s ease;
+        }
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.5);
+        }
+         .btn-secondary {
+            background: #64748b;
+            transition: all 0.3s ease;
+        }
+        .btn-secondary:hover {
+            background: #475569;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(100, 116, 139, 0.5);
+        }
+
+        .stats-card {
+            background: rgba(30, 41, 59, 0.6);
+            border-radius: 8px;
+            padding: 1rem;
+        }
+
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 200px;
+            background-color: rgba(0,0,0,0.8);
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4">
+    <div class="container mx-auto max-w-6xl space-y-6">
+        <div class="flex justify-between items-center">
+            <h1 class="text-2xl font-bold" style="color: var(--primary-color);">
+                <i class="fas fa-gem mr-2"></i>Modo Entrenamiento Avanzado (Skewb)
+            </h1>
+            <a href="index.html" class="btn-primary px-4 py-2 rounded-lg flex items-center">
+                <i class="fas fa-arrow-left mr-2"></i>Volver al Timer Principal
+            </a>
+        </div>
+
+        <div class="panel p-5">
+            <h2 class="text-xl font-semibold mb-4" style="color: var(--primary-color);">
+                <i class="fas fa-layer-group mr-2"></i>Entrenamiento por Fases (Skewb)
+            </h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <button class="phase-btn py-3 rounded-lg" data-phase="skewbFace">
+                    <i class="fas fa-shapes mr-2"></i>Primera Cara
+                </button>
+                <button class="phase-btn py-3 rounded-lg" data-phase="skewbCenters">
+                    <i class="fas fa-bullseye mr-2"></i>Resolver Centros
+                </button>
+                <button class="phase-btn py-3 rounded-lg" data-phase="skewbL4E">
+                    <i class="fas fa-star mr-2"></i>Algs L4E
+                </button>
+            </div>
+
+            <div id="phase-timer-container">
+                <div class="flex flex-col md:flex-row gap-6 items-center">
+                    <div class="flex-1 text-center">
+                        <div id="phase-timer" class="text-6xl font-mono mb-4">0.00</div>
+                        <div class="flex justify-center gap-4 mb-6">
+                            <button id="phase-start-stop" class="btn-primary px-6 py-3 rounded-lg w-40">
+                                <i class="fas fa-play mr-2"></i>Iniciar
+                            </button>
+                             <button id="phase-next" class="btn-secondary px-6 py-3 rounded-lg w-40">
+                                <i class="fas fa-step-forward mr-2"></i>Siguiente
+                            </button>
+                        </div>
+                        <div class="text-center text-sm text-gray-400 mb-4">
+                            <p>Usa 'Espacio' para Iniciar/Detener/Siguiente Fase.</p>
+                            <p>O los botones para control manual.</p>
+                        </div>
+                    </div>
+
+                    <div class="flex-1">
+                        <h3 class="text-lg font-semibold mb-2 text-center">Fase Actual:
+                            <span id="current-phase-display" class="font-bold text-xl" style="color: var(--accent-color);">-</span>
+                        </h3>
+                        <div id="phase-scramble-container" class="mb-2">
+                            <p class="text-sm text-center text-gray-300">Scramble / Algoritmo para la fase:</p>
+                            <div id="phase-scramble" class="text-center font-mono bg-slate-700 p-2 rounded text-sm min-h-[40px] flex items-center justify-center">
+                                Selecciona una fase y presiona Iniciar.
+                            </div>
+                        </div>
+                        <div id="phase-instruction" class="text-center text-gray-400 min-h-[40px]">
+                            Selecciona una fase para comenzar.
+                        </div>
+                        <div id="phase-tips" class="text-center text-xs mt-2 hidden" style="color: var(--primary-color);">
+                            <i class="fas fa-lightbulb mr-1"></i><span id="tip-content"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="phase-stats" class="mt-6">
+                <h3 class="font-semibold mb-4 text-center text-lg">Estadísticas de la Sesión (Promedio / Mejor)</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="stats-card">
+                        <div class="text-sm text-center">Primera Cara</div>
+                        <div class="text-center">
+                            <div class="text-xl font-bold" id="skewbFace-avg">- / -</div>
+                            <div class="text-xs text-gray-400" id="skewbFace-count">Solves: 0</div>
+                        </div>
+                    </div>
+                    <div class="stats-card">
+                        <div class="text-sm text-center">Resolver Centros</div>
+                        <div class="text-center">
+                            <div class="text-xl font-bold" id="skewbCenters-avg">- / -</div>
+                             <div class="text-xs text-gray-400" id="skewbCenters-count">Solves: 0</div>
+                        </div>
+                    </div>
+                    <div class="stats-card">
+                        <div class="text-sm text-center">Algs L4E</div>
+                        <div class="text-center">
+                            <div class="text-xl font-bold" id="skewbL4E-avg">- / -</div>
+                            <div class="text-xs text-gray-400" id="skewbL4E-count">Solves: 0</div>
+                        </div>
+                    </div>
+                </div>
+                 <div class="text-center mt-4">
+                    <button id="reset-session-stats" class="btn-danger px-4 py-2 rounded-lg text-sm">
+                        <i class="fas fa-undo mr-2"></i>Reiniciar Estadísticas de Sesión
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel p-5">
+            <h2 class="text-xl font-semibold mb-4" style="color: var(--primary-color);">
+                <i class="fas fa-fire mr-2"></i>Distribución de Tiempos (Skewb)
+            </h2>
+            <div class="mb-4 flex justify-between items-center">
+                <div>
+                    <label for="heatmap-range" class="mr-2">Rango de tiempos:</label>
+                    <select id="heatmap-range" class="bg-slate-700 rounded px-3 py-1">
+                        <option value="all">Todos los tiempos</option>
+                        <option value="last24h">Últimas 24 horas</option>
+                        <option value="lastWeek">Última semana</option>
+                        <option value="lastMonth">Último mes</option>
+                    </select>
+                </div>
+                 <button id="refresh-heatmap" class="btn-primary px-3 py-1 rounded-lg text-sm">
+                    <i class="fas fa-sync-alt mr-2"></i>Actualizar
+                </button>
+            </div>
+            <div class="overflow-auto">
+                <div id="heatmap-container" class="min-w-full p-4 bg-slate-700 rounded-lg">
+                    <div class="text-center mb-2 text-sm text-gray-300">
+                        Frecuencia de tus tiempos por rangos (más oscuro = más frecuente)
+                    </div>
+                    <div id="heatmap-content" class="min-h-[120px] flex flex-col justify-center">
+                        <div class="text-center text-gray-400">No hay datos para mostrar. Completa algunas fases para ver tu distribución de tiempos.</div>
+                    </div>
+                    <div class="mt-3 text-xs text-gray-400 text-center">
+                        <i class="fas fa-info-circle mr-1"></i> Cada celda muestra cuántos solves has completado en ese rango de tiempo
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel p-5">
+            <h2 class="text-xl font-semibold mb-4" style="color: var(--primary-color);">
+                <i class="fas fa-chart-line mr-2"></i>Progreso General por Fases (Skewb - Histórico)
+            </h2>
+            <div class="h-64">
+                <canvas id="phases-chart-historic"></canvas>
+            </div>
+             <p class="text-center text-sm text-gray-400 mt-2">
+                Este gráfico mostrará tu promedio histórico por fase de Skewb.
+            </p>
+        </div>
+
+        <div class="panel p-5">
+            <h2 class="text-xl font-semibold mb-4" style="color: var(--primary-color);">
+                <i class="fas fa-save mr-2"></i>Gestión de Datos de Entrenamiento (Skewb)
+            </h2>
+            <p class="text-sm text-gray-400 mb-4">Todos los tiempos de las fases de entrenamiento de Skewb se guardan en tu navegador.</p>
+            <div class="flex flex-col sm:flex-row gap-4">
+                <button id="export-csv" class="btn-primary py-2 px-4 rounded-lg flex-1">
+                    <i class="fas fa-file-csv mr-2"></i>Exportar Tiempos (Skewb) a CSV
+                </button>
+                <button id="clear-local-data" class="btn-danger py-2 px-4 rounded-lg flex-1">
+                    <i class="fas fa-trash-alt mr-2"></i>Borrar Datos Locales (Skewb)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Variables de estado
+            let trainingData = {
+                phaseHistory: [], // Entradas: { phase: 'skewbFace', time: 1.23, scramble: 'R U L...', date: timestamp }
+                currentSession: {
+                    skewbFace: [], skewbCenters: [], skewbL4E: []
+                }
+            };
+            let currentPhase = null; // 'skewbFace', 'skewbCenters', 'skewbL4E'
+            let phaseTimerRunning = false;
+            let phaseStartTime = 0;
+            let phaseTimerInterval = null;
+            let lastScrambleAlg = ""; // Puede ser un scramble o un algoritmo
+            let historicPhaseChart = null;
+        
+            // Elementos del DOM
+            const phaseTimerDisplay = document.getElementById('phase-timer');
+            const phaseStartStopButton = document.getElementById('phase-start-stop');
+            const phaseNextButton = document.getElementById('phase-next');
+            const currentPhaseDisplay = document.getElementById('current-phase-display');
+            const phaseScrambleDisplay = document.getElementById('phase-scramble');
+            const phaseButtons = document.querySelectorAll('.phase-btn');
+            const resetSessionStatsButton = document.getElementById('reset-session-stats');
+            const refreshHeatmapButton = document.getElementById('refresh-heatmap');
+            const heatmapRangeSelect = document.getElementById('heatmap-range');
+            const heatmapContent = document.getElementById('heatmap-content');
+            const phaseTipsElement = document.getElementById('phase-tips');
+            const tipContentElement = document.getElementById('tip-content');
+        
+            // Inicializar
+            loadTrainingData();
+            updateAllPhaseStatsUI();
+            updateHistoricPhaseChart();
+            renderHeatmap();
+        
+            // Event listeners
+            phaseButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    if (phaseTimerRunning) {
+                        alert("Detén el cronómetro antes de cambiar de fase");
+                        return;
+                    }
+                    selectPhase(this.dataset.phase);
+                });
+            });
+        
+            phaseStartStopButton.addEventListener('click', function() {
+                handleStartStop();
+            });
+        
+            phaseNextButton.addEventListener('click', function() {
+                if (phaseTimerRunning) {
+                    alert("Detén el cronómetro primero.");
+                    return;
+                }
+                
+                const phases = ['skewbFace', 'skewbCenters', 'skewbL4E'];
+                if (!currentPhase) {
+                    selectPhase(phases[0]);
+                } else {
+                    const currentIndex = phases.indexOf(currentPhase);
+                    const nextIndex = (currentIndex + 1) % phases.length;
+                    selectPhase(phases[nextIndex]);
+                }
+            });
+        
+            resetSessionStatsButton.addEventListener('click', function() {
+                if (confirm("¿Reiniciar estadísticas de esta sesión para Skewb?")) {
+                    trainingData.currentSession = {
+                        skewbFace: [], skewbCenters: [], skewbL4E: []
+                    };
+                    saveTrainingData();
+                    updateAllPhaseStatsUI();
+                }
+            });
+        
+            refreshHeatmapButton.addEventListener('click', function() {
+                renderHeatmap();
+            });
+        
+            document.addEventListener('keydown', function(e) {
+                if (e.code === 'Space' && !e.target.matches('input, textarea, select, button')) {
+                    e.preventDefault();
+                    handleStartStop();
+                }
+            });
+        
+            // Funciones principales
+            function selectPhase(phase) {
+                currentPhase = phase;
+                phaseTimerDisplay.textContent = "0.00";
+                
+                phaseButtons.forEach(btn => {
+                    btn.classList.toggle('phase-active', btn.dataset.phase === phase);
+                });
+                
+                currentPhaseDisplay.textContent = getPhaseName(phase);
+                
+                lastScrambleAlg = generateSkewbPhaseContent(phase);
+                phaseScrambleDisplay.textContent = lastScrambleAlg;
+                
+                phaseStartStopButton.innerHTML = '<i class="fas fa-play mr-2"></i>Iniciar';
+                phaseStartStopButton.classList.remove('btn-danger');
+                phaseStartStopButton.classList.add('btn-primary');
+                
+                showPhaseTips(phase);
+            }
+        
+            function showPhaseTips(phase) {
+                const tips = {
+                    skewbFace: "Resuelve un centro y las cuatro esquinas a su alrededor para formar la primera cara.",
+                    skewbCenters: "Con la primera cara hecha, orienta y permuta los cuatro centros restantes.",
+                    skewbL4E: "Ejecuta el algoritmo mostrado para resolver las últimas cuatro esquinas. Asegúrate que los centros estén resueltos."
+                };
+                
+                if (tips[phase]) {
+                    tipContentElement.textContent = tips[phase];
+                    phaseTipsElement.classList.remove('hidden');
+                } else {
+                    phaseTipsElement.classList.add('hidden');
+                }
+            }
+        
+            function handleStartStop() {
+                if (!currentPhase) {
+                    selectPhase('skewbFace'); // Default a primera fase si no hay ninguna seleccionada
+                    return;
+                }
+                
+                if (!phaseTimerRunning) {
+                    startPhaseTimer();
+                } else {
+                    stopPhaseTimer();
+                }
+            }
+        
+            function startPhaseTimer() {
+                phaseTimerRunning = true;
+                phaseStartTime = Date.now();
+                phaseTimerInterval = setInterval(updatePhaseTimerDisplay, 10);
+                
+                phaseStartStopButton.innerHTML = '<i class="fas fa-stop mr-2"></i>Detener';
+                phaseStartStopButton.classList.remove('btn-primary');
+                phaseStartStopButton.classList.add('btn-danger');
+                
+                phaseButtons.forEach(btn => btn.disabled = true);
+            }
+        
+            function stopPhaseTimer() {
+                clearInterval(phaseTimerInterval);
+                phaseTimerRunning = false;
+                const elapsedTime = (Date.now() - phaseStartTime) / 1000;
+                phaseTimerDisplay.textContent = elapsedTime.toFixed(2);
+                
+                phaseStartStopButton.innerHTML = '<i class="fas fa-play mr-2"></i>Iniciar';
+                phaseStartStopButton.classList.remove('btn-danger');
+                phaseStartStopButton.classList.add('btn-primary');
+                
+                phaseButtons.forEach(btn => btn.disabled = false);
+                
+                if (currentPhase && trainingData.currentSession[currentPhase]) {
+                    trainingData.currentSession[currentPhase].push(elapsedTime);
+                    trainingData.phaseHistory.push({
+                        phase: currentPhase,
+                        time: elapsedTime,
+                        scramble: lastScrambleAlg, // Guardar el scramble o algoritmo
+                        date: Date.now()
+                    });
+                    saveTrainingData();
+                    updatePhaseStatsUI(currentPhase);
+                    updateHistoricPhaseChart();
+                    renderHeatmap();
+                }
+            }
+        
+            function updatePhaseTimerDisplay() {
+                const elapsedTime = (Date.now() - phaseStartTime) / 1000;
+                phaseTimerDisplay.textContent = elapsedTime.toFixed(2);
+            }
+        
+            function getPhaseName(phaseKey) {
+                const names = {
+                    skewbFace: "Primera Cara",
+                    skewbCenters: "Resolver Centros",
+                    skewbL4E: "Algs L4E"
+                };
+                return names[phaseKey] || phaseKey;
+            }
+
+            function generateSkewbScramble(length = 8) {
+                const moves = ["U", "L", "R", "B"];
+                const modifiers = ["", "'"];
+                let scrambleArr = [];
+                let lastMove = '';
+                for (let i = 0; i < length; i++) {
+                    let moveFace;
+                    do { 
+                        moveFace = moves[Math.floor(Math.random() * moves.length)]; 
+                    } while (moveFace === lastMove); // Evita el mismo movimiento exacto dos veces (R R), pero R R' está bien.
+                    
+                    const modifier = modifiers[Math.floor(Math.random() * modifiers.length)];
+                    scrambleArr.push(moveFace + modifier);
+                    lastMove = moveFace;
+                }
+                return scrambleArr.join(" ");
+            }
+        
+            function generateSkewbPhaseContent(phase) {
+                switch(phase) {
+                    case 'skewbFace':
+                        return generateSkewbScramble(Math.floor(Math.random() * 3) + 8); // 8-10 moves
+                    case 'skewbCenters':
+                        // Scrambles cortos que se enfocan en permutar centros después de la 1ra cara
+                        const centerScrambles = [
+                            "R' L R L'", // Swap UBL, UBR centers
+                            "R B R' B'", // Swap UFR, UFL centers
+                            "L R' L' R", // Otra permutación
+                            "B L B' L'"  // Otra permutación
+                        ];
+                        return centerScrambles[Math.floor(Math.random() * centerScrambles.length)] + " (Asume 1ra cara resuelta)";
+                    case 'skewbL4E':
+                        const l4eAlgs = [
+                            "H-Perm (look from U): R' L R L' U R' L R L' U'", // Ejemplo, puede variar
+                            "Pi-Perm (look from U): R U R' U' y R' L R L' B", // Ejemplo
+                            "U-Perm (look from U): L' U R U' L U R' U2", // Ejemplo
+                            "Adj Swap (Sledgehammer): R' L R L'", // El básico
+                            "Pure Flip: (R' L R L') y (R' L R L')" // Ejemplo
+                        ];
+                        return l4eAlgs[Math.floor(Math.random() * l4eAlgs.length)];
+                    default:
+                        return generateSkewbScramble();
+                }
+            }
+        
+            // Estadísticas
+            function updatePhaseStatsUI(phase) {
+                if (!phase || !trainingData.currentSession[phase]) { // Check si la fase existe en currentSession
+                     const avgEl = document.getElementById(`${phase}-avg`);
+                     const countEl = document.getElementById(`${phase}-count`);
+                     if(avgEl) avgEl.textContent = "- / -";
+                     if(countEl) countEl.textContent = "Solves: 0";
+                    return;
+                }
+
+                const sessionTimes = trainingData.currentSession[phase];
+                const avgDisplay = document.getElementById(`${phase}-avg`);
+                const countDisplay = document.getElementById(`${phase}-count`);
+
+                if (!sessionTimes || sessionTimes.length === 0) {
+                    if(avgDisplay) avgDisplay.textContent = "- / -";
+                    if(countDisplay) countDisplay.textContent = "Solves: 0";
+                    return;
+                }
+                
+                const sum = sessionTimes.reduce((a, b) => a + b, 0);
+                const avg = (sum / sessionTimes.length).toFixed(2);
+                const best = Math.min(...sessionTimes).toFixed(2);
+                
+                if(avgDisplay) avgDisplay.textContent = `${avg}s / ${best}s`;
+                if(countDisplay) countDisplay.textContent = `Solves: ${sessionTimes.length}`;
+            }
+        
+            function updateAllPhaseStatsUI() {
+                ['skewbFace', 'skewbCenters', 'skewbL4E'].forEach(phase => {
+                    updatePhaseStatsUI(phase);
+                });
+            }
+        
+            // Heatmap (simplificado como barras horizontales por ahora)
+            function renderHeatmap() {
+                heatmapContent.innerHTML = ''; // Limpiar contenido anterior
+                const rangeType = heatmapRangeSelect.value;
+                let filteredTimes = trainingData.phaseHistory;
+                
+                const now = Date.now();
+                if (rangeType === "last24h") {
+                    filteredTimes = trainingData.phaseHistory.filter(t => t.date && (now - t.date) < 24 * 60 * 60 * 1000);
+                } else if (rangeType === "lastWeek") {
+                    filteredTimes = trainingData.phaseHistory.filter(t => t.date && (now - t.date) < 7 * 24 * 60 * 60 * 1000);
+                } else if (rangeType === "lastMonth") {
+                    filteredTimes = trainingData.phaseHistory.filter(t => t.date && (now - t.date) < 30 * 24 * 60 * 60 * 1000);
+                }
+                
+                if (filteredTimes.length === 0) {
+                    heatmapContent.innerHTML = '<div class="text-center text-gray-400">No hay datos para el rango seleccionado. Completa algunas fases para ver tu distribución de tiempos.</div>';
+                    return;
+                }
+                
+                // Rangos de tiempo para Skewb (ajustar según sea necesario)
+                const timeRanges = [
+                    { label: "0-1s", min: 0, max: 1 }, { label: "1-2s", min: 1, max: 2 },
+                    { label: "2-3s", min: 2, max: 3 }, { label: "3-4s", min: 3, max: 4 },
+                    { label: "4-5s", min: 4, max: 5 }, { label: "5-7s", min: 5, max: 7 },
+                    { label: "7-10s", min: 7, max: 10 }, { label: "10+s", min: 10, max: Infinity }
+                ];
+                
+                const counts = timeRanges.map(range => {
+                    return filteredTimes.filter(t => t.time >= range.min && t.time < range.max).length;
+                });
+                
+                const maxCount = Math.max(...counts);
+                 if (maxCount === 0 && filteredTimes.length > 0) { // Si hay tiempos pero no caen en los rangos definidos (improbable con 10+s)
+                    heatmapContent.innerHTML = '<div class="text-center text-gray-400">Los tiempos registrados no entran en los rangos definidos para el heatmap.</div>';
+                    return;
+                }
+                 if (maxCount === 0) { // No hay tiempos que contar
+                    heatmapContent.innerHTML = '<div class="text-center text-gray-400">No hay tiempos válidos para mostrar en el heatmap.</div>';
+                    return;
+                }
+
+                const heatmapVisualization = document.createElement('div');
+                heatmapVisualization.className = 'w-full';
+                
+                timeRanges.forEach((range, index) => {
+                    const count = counts[index];
+                    const percentage = maxCount > 0 ? (count / maxCount * 100) : 0;
+                    
+                    const rangeElement = document.createElement('div');
+                    rangeElement.className = 'mb-2';
+                    
+                    const labelElement = document.createElement('div');
+                    labelElement.className = 'flex justify-between text-xs mb-1 text-gray-300';
+                    labelElement.innerHTML = `<span>${range.label}</span> <span>${count} solves</span>`;
+                    
+                    const barContainer = document.createElement('div');
+                    barContainer.className = 'w-full bg-gray-600 rounded-full h-4 overflow-hidden';
+                    
+                    const barElement = document.createElement('div');
+                    barElement.className = 'h-4 rounded-full';
+                    barElement.style.width = `${percentage}%`;
+                    barElement.style.backgroundColor = 'var(--primary-color)'; // Usar color primario
+                    barElement.style.transition = 'width 0.5s ease';
+                    
+                    barContainer.appendChild(barElement);
+                    rangeElement.appendChild(labelElement);
+                    rangeElement.appendChild(barContainer);
+                    heatmapVisualization.appendChild(rangeElement);
+                });
+                heatmapContent.appendChild(heatmapVisualization);
+            }
+        
+            // Gráfico histórico
+            function updateHistoricPhaseChart() {
+                const ctx = document.getElementById('phases-chart-historic').getContext('2d');
+                
+                if (historicPhaseChart) {
+                    historicPhaseChart.destroy();
+                }
+                
+                const phases = ['skewbFace', 'skewbCenters', 'skewbL4E'];
+                const phaseData = phases.map(phaseKey => {
+                    const times = trainingData.phaseHistory
+                        .filter(entry => entry.phase === phaseKey)
+                        .map(entry => entry.time);
+                    
+                    return {
+                        phaseName: getPhaseName(phaseKey),
+                        count: times.length,
+                        avg: times.length > 0 ? (times.reduce((a, b) => a + b, 0) / times.length) : null
+                    };
+                }).filter(data => data.count > 0); // Solo incluir fases con datos
+                
+                if (phaseData.length === 0) {
+                    // Intentar dibujar texto si no hay datos
+                    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height); // Limpiar canvas
+                    ctx.font = '16px Roboto, sans-serif';
+                    ctx.fillStyle = '#9ca3af'; // Color de texto grisáceo
+                    ctx.textAlign = 'center';
+                    ctx.fillText('No hay datos históricos para Skewb.', ctx.canvas.width / 2, ctx.canvas.height / 2);
+                    return;
+                }
+                
+                historicPhaseChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: phaseData.map(data => data.phaseName),
+                        datasets: [{
+                            label: 'Tiempo Promedio (s)',
+                            data: phaseData.map(data => data.avg),
+                            backgroundColor: [
+                                'rgba(34, 197, 94, 0.7)',  // Verde
+                                'rgba(249, 115, 22, 0.7)', // Naranja
+                                'rgba(59, 130, 246, 0.7)'  // Azul
+                            ],
+                            borderColor: [
+                                'rgba(34, 197, 94, 1)',
+                                'rgba(249, 115, 22, 1)',
+                                'rgba(59, 130, 246, 1)'
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        scales: {
+                            y: { beginAtZero: true, ticks: { color: 'white', callback: value => value.toFixed(1) + 's' }, grid: { color: 'rgba(255,255,255,0.1)'}},
+                            x: { ticks: { color: 'white' }, grid: { display: false }}
+                        },
+                        plugins: { legend: { labels: { color: 'white' }}, tooltip: { callbacks: { label: context => context.parsed.y.toFixed(2) + 's' }}}
+                    }
+                });
+            }
+        
+            // Almacenamiento local
+            function loadTrainingData() {
+                const savedData = localStorage.getItem('speedtimerSkewbTrainingData'); // Nueva key para Skewb
+                if (savedData) {
+                    try {
+                        const parsedData = JSON.parse(savedData);
+                        if (parsedData) {
+                            trainingData.phaseHistory = parsedData.phaseHistory || [];
+                            trainingData.currentSession = parsedData.currentSession || {
+                                skewbFace: [], skewbCenters: [], skewbL4E: []
+                            };
+                        }
+                    } catch (e) {
+                        console.error("Error al cargar datos de Skewb:", e);
+                        // Reset a valores por defecto si hay error
+                         trainingData.phaseHistory = [];
+                         trainingData.currentSession = { skewbFace: [], skewbCenters: [], skewbL4E: [] };
+                    }
+                }
+            }
+        
+            function saveTrainingData() {
+                localStorage.setItem('speedtimerSkewbTrainingData', JSON.stringify(trainingData)); // Nueva key
+            }
+            
+            document.getElementById('export-csv').addEventListener('click', function() {
+                if (trainingData.phaseHistory.length === 0) {
+                    alert("No hay datos de Skewb para exportar."); return;
+                }
+                let csvContent = "data:text/csv;charset=utf-8,Fecha,Fase (Skewb),Tiempo(s),Scramble/Algoritmo\n";
+                trainingData.phaseHistory.forEach(item => {
+                    const dateStr = new Date(item.date).toLocaleString();
+                    const scrambleDisplay = item.scramble ? item.scramble.replace(/"/g, '""') : ""; // Escapar comillas
+                    csvContent += `"${dateStr}","${getPhaseName(item.phase)}",${item.time},"${scrambleDisplay}"\n`;
+                });
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", "speedtimer_skewb_training_data.csv");
+                document.body.appendChild(link); link.click(); document.body.removeChild(link);
+            });
+            
+            document.getElementById('clear-local-data').addEventListener('click', function() {
+                if (confirm("¿Estás seguro de que quieres borrar TODOS los datos de entrenamiento de Skewb? Esta acción no se puede deshacer.")) {
+                    localStorage.removeItem('speedtimerSkewbTrainingData'); // Key correcta
+                    trainingData = { phaseHistory: [], currentSession: { skewbFace: [], skewbCenters: [], skewbL4E: [] }};
+                    updateAllPhaseStatsUI(); updateHistoricPhaseChart(); renderHeatmap();
+                    alert("Todos los datos de Skewb han sido borrados.");
+                }
+            });
+        });
+    </script>
+</body>
+</html>

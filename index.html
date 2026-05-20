@@ -1,0 +1,1821 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpeedTimer Enhanced</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module" src="https://cdn.cubing.net/js/cubing/twisty"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #3b82f6;
+            --secondary-color: #1e293b;
+            --accent-color: #f59e0b;
+            --text-color: #ffffff;
+            --panel-bg: rgba(15, 23, 42, 0.85);
+        }
+
+        * { box-sizing: border-box; }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: var(--text-color);
+            touch-action: manipulation;
+        }
+
+        /* ── LAYOUT ── */
+        #app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            max-height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ── TOP BAR ── */
+        #topbar {
+            flex-shrink: 0;
+            height: 46px;
+            padding: 0 14px;
+            border-bottom: 1px solid rgba(59,130,246,0.3);
+            background: rgba(10,18,38,0.95);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            flex-wrap: nowrap;
+        }
+
+        /* ── MAIN 3-COLUMN GRID ── */
+        #main-grid {
+            flex: 1;
+            display: grid;
+            /* Left ~280px | Center takes remaining | Right ~280px */
+            grid-template-columns: 280px 1fr 280px;
+            gap: 10px;
+            padding: 10px;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        /* ── COLUMNS ── */
+        #left-col, #center-col, #right-col {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        /* ── LOGO ── */
+        .logo { display: flex; align-items: center; gap: 6px; }
+        .logo-icon {
+            width: 26px; height: 26px; flex-shrink: 0;
+            background: conic-gradient(#ff0000 0deg 90deg,#ffffff 90deg 180deg,#0000ff 180deg 270deg,#ffff00 270deg 360deg);
+            border: 2px solid #333; border-radius: 3px; transform: rotate(-15deg);
+        }
+        .logo-text {
+            font-weight: bold; font-size: 1.1rem;
+            background: linear-gradient(to right, #3b82f6, #10b981);
+            -webkit-background-clip: text; background-clip: text; color: transparent;
+            white-space: nowrap;
+        }
+
+        /* ── PANELS ── */
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid rgba(59,130,246,0.35);
+            border-radius: 10px;
+            backdrop-filter: blur(6px);
+            overflow: hidden;
+        }
+
+        /* ── STATS PANEL (left top, fixed height) ── */
+        #stats-panel {
+            padding: 10px 12px;
+            flex-shrink: 0;
+        }
+
+        .stats-grid { display: grid; grid-template-columns: 1fr; gap: 5px; }
+
+        .stats-card {
+            background: rgba(30,41,59,0.6);
+            border-radius: 6px;
+            padding: 6px 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.2s ease;
+        }
+        .stats-card:hover { background: rgba(30,41,59,0.9); }
+        .stats-card .label { font-size: 0.72rem; color: #94a3b8; }
+        .stats-card .value { font-size: 0.88rem; font-weight: 700; color: #e2e8f0; }
+
+        /* PB highlight */
+        #stat-best { border: 1px solid rgba(245,158,11,0.4); }
+        #stat-best .value { color: var(--accent-color); }
+        #stat-best { position: relative; }
+        #stat-best.is-pb::after {
+            content: '★'; position: absolute; right: 8px; top: 50%;
+            transform: translateY(-50%); color: var(--accent-color); font-size: 0.9rem;
+        }
+
+        /* ── HISTORY PANEL (left, fills remaining height) ── */
+        #history-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 10px 12px;
+            min-height: 0;
+        }
+
+        #times-list {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+            margin-top: 4px;
+        }
+
+        /* ── SCRAMBLE PANEL (center top, compact) ── */
+        #scramble-panel {
+            padding: 10px 14px;
+            flex-shrink: 0;
+        }
+
+        .scramble-text {
+            font-family: 'Courier New', monospace;
+            letter-spacing: 0.5px;
+            background: rgba(30,41,59,0.7);
+            border-left: 3px solid var(--primary-color);
+            border-radius: 5px;
+            padding: 8px 12px;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            text-align: center;
+            color: #e2e8f0;
+            word-break: break-all;
+        }
+
+        /* ── TIMER PANEL (center, fills remaining height) ── */
+        #timer-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px 16px 18px;
+            min-height: 0;
+            gap: 12px;
+        }
+
+        /* Big red timer — mirrors the image */
+        #timer {
+            font-family: 'Courier New', monospace;
+            font-size: 7rem;
+            font-weight: 900;
+            line-height: 1;
+            color: #ef4444;
+            letter-spacing: 6px;
+            transition: color 0.2s;
+            text-shadow: 0 0 30px rgba(239,68,68,0.4);
+        }
+
+        @media (max-height: 650px) { #timer { font-size: 4rem; } }
+        @media (max-width: 900px)  { #timer { font-size: 4.5rem; } }
+
+        /* Inspection countdown (amber, shown below timer) */
+        .inspection-timer {
+            font-family: 'Courier New', monospace;
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: var(--accent-color);
+            text-align: center;
+            transition: color 0.3s;
+        }
+        .inspection-warning { color: #ef4444; animation: blink 0.5s step-end infinite; }
+        @keyframes blink { 50% { opacity: 0.3; } }
+
+        /* Start / touch area button */
+        #timer-touch-area {
+            width: 100%;
+            max-width: 320px;
+            height: 48px;
+            background: rgba(30,41,59,0.5);
+            border: 1px solid rgba(59,130,246,0.4);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        #timer-touch-area:hover { background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.7); }
+        #timer-touch-area:active { transform: scale(0.98); }
+
+        .ready-state {
+            background: rgba(16,185,129,0.12) !important;
+            border-color: rgba(16,185,129,0.6) !important;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%   { box-shadow: 0 0 0 0 rgba(16,185,129,0.4); }
+            70%  { box-shadow: 0 0 0 10px rgba(16,185,129,0); }
+            100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); }
+        }
+
+        twisty-player { border-radius: 8px; }
+
+        /* ── RIGHT COL: 2D Preview (fills full height) ── */
+        #right-scramble-panel {
+            flex: 1;
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        #scramble-visual-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 6px;
+            min-height: 0;
+        }
+
+        #scramble-player {
+            width: 100%;
+            flex: 1;
+            min-height: 0;
+        }
+
+        /* ── BUTTONS ── */
+        .btn-primary {
+            background: var(--primary-color); color: white;
+            border: none; border-radius: 7px; padding: 5px 12px;
+            font-weight: 600; font-size: 0.8rem; cursor: pointer;
+            transition: all 0.25s; display: inline-flex; align-items: center; gap: 5px;
+        }
+        .btn-primary:hover { filter: brightness(1.15); transform: translateY(-1px); }
+
+        .btn-danger {
+            background: #ef4444; color: white;
+            border: none; border-radius: 7px; padding: 4px 10px;
+            font-size: 0.72rem; cursor: pointer; transition: all 0.2s;
+            display: inline-flex; align-items: center; gap: 4px;
+        }
+        .btn-danger:hover { filter: brightness(1.1); }
+
+        .btn-sm {
+            background: rgba(30,41,59,0.6); color: #94a3b8;
+            border: 1px solid rgba(71,85,105,0.5);
+            border-radius: 6px; padding: 3px 8px; font-size: 0.7rem;
+            cursor: pointer; transition: all 0.2s;
+            display: inline-flex; align-items: center; gap: 3px;
+        }
+        .btn-sm:hover { background: rgba(59,130,246,0.2); color: white; }
+
+        .btn-algorithms {
+            background: #8b5cf6; color: white;
+            border: none; border-radius: 7px; padding: 5px 10px;
+            font-size: 0.8rem; font-weight: 600; cursor: pointer;
+            transition: all 0.25s; display: inline-flex; align-items: center; gap: 5px;
+            text-decoration: none;
+        }
+        .btn-algorithms:hover { filter: brightness(1.15); transform: translateY(-1px); }
+
+        .btn-training {
+            background: var(--accent-color); color: #0f172a;
+            border: none; border-radius: 7px; padding: 5px 10px;
+            font-size: 0.8rem; font-weight: 700; cursor: pointer;
+            transition: all 0.25s; display: inline-flex; align-items: center; gap: 5px;
+        }
+        .btn-training:hover { filter: brightness(1.1); }
+
+        /* ── DROPDOWN ── */
+        .dropdown { position: relative; }
+        .dropdown-content {
+            position: absolute; right: 0; top: calc(100% + 4px);
+            background: rgba(10,18,38,0.98); border: 1px solid var(--primary-color);
+            border-radius: 8px; box-shadow: 0 10px 24px rgba(0,0,0,0.5);
+            min-width: 170px; z-index: 200; display: none;
+            max-height: 320px; overflow-y: auto; overflow-x: hidden;
+        }
+        .dropdown-content a, .dropdown-content .dd-item {
+            display: flex; align-items: center; gap: 8px;
+            padding: 7px 14px; font-size: 0.82rem; color: #e2e8f0;
+            text-decoration: none; cursor: pointer;
+            transition: background 0.15s;
+        }
+        .dropdown-content a:hover, .dropdown-content .dd-item:hover { background: rgba(59,130,246,0.2); }
+        .active-category { background: var(--primary-color) !important; }
+        .dd-separator { border-top: 1px solid rgba(71,85,105,0.4); margin: 2px 0; }
+
+        /* ── USER DROPDOWN ── */
+        #user-dropdown { min-width: 200px; }
+        .user-info { padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+
+        /* ── TIME ENTRIES ── */
+        .time-entry {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 5px 6px; border-bottom: 1px solid rgba(71,85,105,0.25);
+            font-size: 0.78rem; border-radius: 5px; cursor: pointer;
+            transition: background 0.15s;
+        }
+        .time-entry:hover { background: rgba(30,41,59,0.55); }
+        .penalty-btn {
+            font-size: 0.65rem; padding: 2px 5px; border-radius: 4px;
+            border: none; cursor: pointer; margin-right: 2px;
+        }
+        .delete-btn {
+            color: #f87171; background: none; border: none;
+            cursor: pointer; padding: 2px 4px; font-size: 0.75rem;
+        }
+        .delete-btn:hover { color: #ef4444; }
+
+        /* ── SCROLLBAR ── */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: rgba(15,23,42,0.3); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb { background: rgba(59,130,246,0.5); border-radius: 3px; }
+
+        /* ── SETTINGS PANEL ── */
+        .settings-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+            z-index: 99; display: none;
+        }
+        .settings-overlay.active { display: block; }
+        .settings-panel {
+            position: fixed; top: 0; right: -480px; width: 440px; height: 100vh;
+            background: rgba(15,23,42,0.97); border-left: 1px solid var(--primary-color);
+            z-index: 100; transition: right 0.3s ease; padding: 18px;
+            overflow-y: auto;
+        }
+        .settings-panel.open { right: 0; }
+
+        .color-picker { display: flex; gap: 8px; margin: 8px 0; }
+        .color-option {
+            width: 26px; height: 26px; border-radius: 50%;
+            cursor: pointer; border: 2px solid transparent;
+        }
+        .color-option.selected { border-color: white; }
+
+        /* ── PB ANIMATION ── */
+        @keyframes pb-bounce {
+            0%   { transform: translateX(-50%) scale(0.6); opacity: 0; }
+            40%  { transform: translateX(-50%) scale(1.1); opacity: 1; }
+            60%  { transform: translateX(-50%) scale(0.95); }
+            80%  { transform: translateX(-50%) scale(1.05); }
+            100% { transform: translateX(-50%) scale(1); opacity: 1; }
+        }
+        @keyframes pb-glow {
+            0%,100% { box-shadow: 0 0 14px rgba(234,179,8,0.6), 0 0 30px rgba(234,179,8,0.3); }
+            50%      { box-shadow: 0 0 24px rgba(234,179,8,0.9), 0 0 50px rgba(234,179,8,0.5); }
+        }
+        @keyframes pb-stars {
+            0%   { opacity: 0; transform: translateX(-50%) translateY(0) scale(0.5); }
+            20%  { opacity: 1; }
+            80%  { opacity: 1; }
+            100% { opacity: 0; transform: translateX(-50%) translateY(-30px) scale(1.5); }
+        }
+        @keyframes pb-exit {
+            to { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+        }
+
+        .pb-alert {
+            position: fixed; top: 60px; left: 50%;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: black; padding: 10px 24px; border-radius: 50px;
+            font-weight: bold; font-size: 1rem;
+            display: flex; align-items: center; gap: 8px;
+            z-index: 1000;
+            animation: pb-bounce 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards, pb-glow 1.5s ease-in-out 0.5s infinite;
+        }
+        .pb-stars {
+            position: fixed; top: 42px; left: 50%;
+            font-size: 1.6rem; z-index: 999;
+            animation: pb-stars 0.8s ease-out forwards;
+        }
+        .pb-exit { animation: pb-exit 0.5s ease forwards; }
+
+        /* Background flash on PB */
+        @keyframes pb-flash {
+            0%   { opacity: 0; }
+            20%  { opacity: 0.15; }
+            80%  { opacity: 0.15; }
+            100% { opacity: 0; }
+        }
+        .pb-flash-overlay {
+            position: fixed; inset: 0; background: #f59e0b;
+            z-index: 50; pointer-events: none;
+            animation: pb-flash 1s ease forwards;
+        }
+
+        /* Timer color states */
+        .timer-red    { color: #ef4444 !important; }
+        .timer-green  { color: #10b981 !important; }
+        .timer-normal { color: white !important; }
+
+        /* Notification */
+        .notification {
+            position: fixed; top: 10px; right: 10px;
+            background: #16a34a; color: white; padding: 8px 16px;
+            border-radius: 8px; font-size: 0.85rem; z-index: 1000;
+            display: flex; align-items: center; gap: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transition: opacity 0.4s;
+        }
+
+        /* ── SECTION HEADER ── */
+        .section-header {
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* ── MOBILE ── */
+        @media (max-width: 768px) {
+            #main-grid {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr;
+            }
+            #right-col { display: none; }
+            #left-col { flex-direction: row; flex-shrink: 0; }
+            #stats-panel { flex: 1; }
+            #history-panel { flex: 2; max-height: 180px; }
+            #timer { font-size: 3.5rem; }
+        }
+        @media (max-height: 500px) {
+            #timer { font-size: 2.5rem; }
+            #timer-touch-area { height: 38px; }
+        }
+    </style>
+</head>
+<body>
+    <audio id="timer-start-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-game-click-1114.mp3" preload="auto"></audio>
+    <audio id="timer-stop-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-jump-coin-216.mp3" preload="auto"></audio>
+    <audio id="inspection-warning-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-alarm-digital-clock-beep-989.mp3" preload="auto"></audio>
+
+    <!-- Settings overlay & panel -->
+    <div class="settings-overlay" id="settings-overlay"></div>
+    <div class="settings-panel" id="settings-panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+            <h2 style="font-size:1.1rem;font-weight:bold;">Configuración</h2>
+            <button id="close-settings" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:1.1rem;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div style="margin-bottom:16px;">
+            <h3 style="font-size:0.85rem;font-weight:600;margin-bottom:10px;"><i class="fas fa-cog mr-1"></i> Timer</h3>
+            <div style="margin-bottom:10px;">
+                <label style="font-size:0.8rem;display:block;margin-bottom:5px;">Tiempo de inspección</label>
+                <div style="display:flex;gap:16px;font-size:0.8rem;">
+                    <label><input type="radio" name="inspection" value="0" checked style="margin-right:4px;"> Sin inspección</label>
+                    <label><input type="radio" name="inspection" value="15" style="margin-right:4px;"> 15s (WCA)</label>
+                </div>
+            </div>
+            <div style="margin-bottom:10px;">
+                <label style="font-size:0.8rem;display:block;margin-bottom:5px;">Sonidos y vibración</label>
+                <div style="display:flex;flex-direction:column;gap:5px;font-size:0.8rem;">
+                    <label><input type="checkbox" id="sound-enabled" checked style="margin-right:4px;"> Sonidos</label>
+                    <label><input type="checkbox" id="vibration-enabled" checked style="margin-right:4px;"> Vibración</label>
+                    <label><input type="checkbox" id="keyboard-sounds" checked style="margin-right:4px;"> Sonidos de teclado</label>
+                </div>
+            </div>
+            <div>
+                <label style="font-size:0.8rem;display:block;margin-bottom:4px;">Sensibilidad del timer</label>
+                <input type="range" id="timer-sensitivity" min="1" max="10" value="5" style="width:100%;">
+                <div style="display:flex;justify-content:space-between;font-size:0.65rem;color:#94a3b8;">
+                    <span>Baja</span><span>Alta</span>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-bottom:16px;">
+            <h3 style="font-size:0.85rem;font-weight:600;margin-bottom:10px;"><i class="fas fa-palette mr-1"></i> Colores</h3>
+            <div style="margin-bottom:8px;">
+                <label style="font-size:0.75rem;display:block;margin-bottom:5px;">Color primario</label>
+                <div class="color-picker">
+                    <div class="color-option selected" data-color="#3b82f6" style="background:#3b82f6;"></div>
+                    <div class="color-option" data-color="#10b981" style="background:#10b981;"></div>
+                    <div class="color-option" data-color="#f59e0b" style="background:#f59e0b;"></div>
+                    <div class="color-option" data-color="#ef4444" style="background:#ef4444;"></div>
+                    <div class="color-option" data-color="#8b5cf6" style="background:#8b5cf6;"></div>
+                    <div class="color-option" data-color="#ec4899" style="background:#ec4899;"></div>
+                </div>
+            </div>
+            <div style="margin-bottom:8px;">
+                <label style="font-size:0.75rem;display:block;margin-bottom:5px;">Color de acento</label>
+                <div class="color-picker">
+                    <div class="color-option selected" data-accent="#f59e0b" style="background:#f59e0b;"></div>
+                    <div class="color-option" data-accent="#3b82f6" style="background:#3b82f6;"></div>
+                    <div class="color-option" data-accent="#10b981" style="background:#10b981;"></div>
+                    <div class="color-option" data-accent="#ec4899" style="background:#ec4899;"></div>
+                    <div class="color-option" data-accent="#6366f1" style="background:#6366f1;"></div>
+                </div>
+            </div>
+            <div>
+                <label style="font-size:0.75rem;display:block;margin-bottom:5px;">Color del timer</label>
+                <div class="color-picker">
+                    <div class="color-option" data-timer="#ffffff" style="background:#ffffff;"></div>
+                    <div class="color-option" data-timer="#3b82f6" style="background:#3b82f6;"></div>
+                    <div class="color-option selected" data-timer="#10b981" style="background:#10b981;"></div>
+                    <div class="color-option" data-timer="#f59e0b" style="background:#f59e0b;"></div>
+                    <div class="color-option" data-timer="#ec4899" style="background:#ec4899;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-bottom:16px;">
+            <h3 style="font-size:0.85rem;font-weight:600;margin-bottom:10px;"><i class="fas fa-moon mr-1"></i> Tema y Apariencia</h3>
+            <div style="margin-bottom:8px;">
+                <label style="font-size:0.75rem;display:block;margin-bottom:5px;">Tema</label>
+                <div style="display:flex;gap:12px;font-size:0.8rem;">
+                    <label><input type="radio" name="theme" value="dark" checked style="margin-right:4px;"> Oscuro</label>
+                    <label><input type="radio" name="theme" value="light" style="margin-right:4px;"> Claro</label>
+                </div>
+            </div>
+            <div style="margin-bottom:8px;">
+                <label style="font-size:0.75rem;display:block;margin-bottom:4px;">Opacidad de paneles</label>
+                <input type="range" id="panel-opacity" min="50" max="100" value="85" style="width:100%;">
+            </div>
+            <div>
+                <label style="font-size:0.75rem;display:block;margin-bottom:4px;">Tamaño de fuente</label>
+                <input type="range" id="font-size" min="12" max="20" value="14" style="width:100%;">
+            </div>
+        </div>
+
+        <div style="margin-bottom:16px;">
+            <h3 style="font-size:0.85rem;font-weight:600;margin-bottom:10px;"><i class="fas fa-cube mr-1"></i> Scramble</h3>
+            <div style="margin-bottom:8px;">
+                <label style="font-size:0.75rem;display:block;margin-bottom:4px;">Longitud</label>
+                <input type="range" id="scramble-length" min="10" max="30" value="20" style="width:100%;">
+                <div style="display:flex;justify-content:space-between;font-size:0.65rem;color:#94a3b8;"><span>Corto</span><span>Largo</span></div>
+            </div>
+            <div>
+                <label style="font-size:0.75rem;display:flex;align-items:center;gap:6px;">
+                    <input type="checkbox" id="auto-scramble" checked> Auto-scramble
+                </label>
+            </div>
+        </div>
+
+        <div>
+            <h3 style="font-size:0.85rem;font-weight:600;margin-bottom:10px;"><i class="fas fa-database mr-1"></i> Datos</h3>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+                <button id="export-data" style="padding:7px;background:#2563eb;color:white;border:none;border-radius:7px;cursor:pointer;font-size:0.8rem;">
+                    <i class="fas fa-download mr-1"></i>Exportar Datos
+                </button>
+                <button id="reset-settings" style="padding:7px;background:#dc2626;color:white;border:none;border-radius:7px;cursor:pointer;font-size:0.8rem;">
+                    <i class="fas fa-redo mr-1"></i>Restablecer Config.
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- APP -->
+    <div id="app">
+        <!-- TOP BAR -->
+        <div id="topbar">
+            <div class="logo">
+                <div class="logo-icon"></div>
+                <div class="logo-text">SpeedTimer</div>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:nowrap;">
+                <!-- Categoría -->
+                <div class="dropdown">
+                    <button id="category-btn" style="background:rgba(30,41,59,0.8);border:none;color:white;padding:5px 10px;border-radius:7px;cursor:pointer;font-size:0.8rem;display:inline-flex;align-items:center;gap:5px;">
+                        <i class="fas fa-cube" style="color:var(--primary-color);"></i>
+                        <span id="current-category-display">3x3x3</span>
+                        <i class="fas fa-caret-down" style="color:var(--primary-color);"></i>
+                    </button>
+                    <div class="dropdown-content" id="category-dropdown">
+                        <a href="#" class="category-option active-category" data-category="333"><i class="fas fa-cube"></i>3x3x3</a>
+                        <a href="#" class="category-option" data-category="222"><i class="fas fa-th"></i>2x2x2</a>
+                        <a href="#" class="category-option" data-category="444"><i class="fas fa-th-large"></i>4x4x4</a>
+                        <a href="#" class="category-option" data-category="555"><i class="fas fa-th-large"></i>5x5x5</a>
+                        <a href="#" class="category-option" data-category="666"><i class="fas fa-th-large"></i>6x6x6</a>
+                        <a href="#" class="category-option" data-category="777"><i class="fas fa-th-large"></i>7x7x7</a>
+                        <div class="dd-separator"></div>
+                        <a href="#" class="category-option" data-category="333oh"><i class="fas fa-hand-paper"></i>3x3x3 OH</a>
+                        <a href="#" class="category-option" data-category="333bf"><i class="fas fa-blind"></i>3x3x3 BLD</a>
+                        <a href="#" class="category-option" data-category="333fm"><i class="fas fa-pen-fancy"></i>3x3x3 FM</a>
+                        <a href="#" class="category-option" data-category="333mbf"><i class="fas fa-brain"></i>3x3x3 MBLD</a>
+                        <div class="dd-separator"></div>
+                        <a href="#" class="category-option" data-category="minx"><i class="fas fa-star"></i>Megaminx</a>
+                        <a href="#" class="category-option" data-category="pyram"><i class="fas fa-play"></i>Pyraminx</a>
+                        <a href="#" class="category-option" data-category="skewb"><i class="fas fa-gem"></i>Skewb</a>
+                        <a href="#" class="category-option" data-category="sq1"><i class="fas fa-square"></i>Square-1</a>
+                        <a href="#" class="category-option" data-category="clock"><i class="fas fa-clock"></i>Clock</a>
+                        <div class="dd-separator"></div>
+                        <a href="#" class="category-option" data-category="444bf"><i class="fas fa-blind"></i>4x4x4 BLD</a>
+                        <a href="#" class="category-option" data-category="555bf"><i class="fas fa-blind"></i>5x5x5 BLD</a>
+                    </div>
+                </div>
+
+                <!-- Algoritmos -->
+                <a href="algoritmos.html" class="btn-algorithms">
+                    <i class="fas fa-code"></i>Algoritmos
+                </a>
+
+                <!-- Entrenamiento -->
+                <div class="dropdown">
+                    <button id="training-btn" class="btn-training">
+                        <i class="fas fa-tachometer-alt"></i>Entrenamiento
+                        <i class="fas fa-caret-down" style="margin-left:2px;"></i>
+                    </button>
+                    <div class="dropdown-content" id="training-dropdown">
+                        <a href="entrenamiento.html"><i class="fas fa-cube"></i>3x3x3</a>
+                        <a href="entrenamiento2.html"><i class="fas fa-th"></i>2x2x2</a>
+                        <a href="entrenamiento4.html"><i class="fas fa-th-large"></i>4x4x4</a>
+                        <a href="entrenamiento5.html"><i class="fas fa-th-large"></i>5x5x5</a>
+                        <div class="dd-separator"></div>
+                        <a href="entrenamiento_oh.html"><i class="fas fa-hand-paper"></i>3x3x3 OH</a>
+                        <a href="entrenamiento_bld.html"><i class="fas fa-blind"></i>3x3x3 BLD</a>
+                        <div class="dd-separator"></div>
+                        <a href="entrenamiento_mega.html"><i class="fas fa-star"></i>Megaminx</a>
+                        <a href="entrenamiento_pyra.html"><i class="fas fa-play"></i>Pyraminx</a>
+                        <a href="entrenamiento_skewb.html"><i class="fas fa-gem"></i>Skewb</a>
+                        <a href="entrenamiento_sq-1.html"><i class="fas fa-square"></i>Square-1</a>
+                    </div>
+                </div>
+
+                <!-- Pantalla completa -->
+                <button id="fullscreen-btn" style="background:none;border:none;color:#94a3b8;cursor:pointer;padding:4px 6px;border-radius:6px;" title="Pantalla completa">
+                    <i id="fullscreen-icon" class="fas fa-expand" style="font-size:1rem;"></i>
+                </button>
+
+                <!-- Configuración -->
+                <button id="settings-btn" style="background:none;border:none;color:#94a3b8;cursor:pointer;padding:4px 6px;border-radius:6px;" title="Configuración">
+                    <i class="fas fa-cog" style="font-size:1rem;"></i>
+                </button>
+
+                <!-- Usuario -->
+                <div class="dropdown">
+                    <button id="user-btn" style="background:none;border:none;color:var(--primary-color);cursor:pointer;padding:4px 6px;border-radius:6px;">
+                        <i class="fas fa-user-circle" style="font-size:1.1rem;"></i>
+                    </button>
+                    <div class="dropdown-content" id="user-dropdown" style="min-width:200px;">
+                        <div class="user-info">
+                            <div style="font-weight:600;color:var(--primary-color);font-size:0.85rem;" id="current-username">Usuario</div>
+                            <div style="font-size:0.7rem;color:#94a3b8;" id="user-stats">0 solves</div>
+                        </div>
+                        <div class="dd-separator"></div>
+                        <a href="stats.html" id="my-stats-btn"><i class="fas fa-chart-line"></i>Mis Estadísticas</a>
+                        <div class="dd-separator"></div>
+                        <a href="#" id="logout-btn-user" style="color:#f87171;"><i class="fas fa-sign-out-alt"></i>Cerrar Sesión</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN GRID -->
+        <div id="main-grid">
+            <!-- LEFT COLUMN: Stats + History -->
+            <div id="left-col">
+                <!-- Stats panel -->
+                <div class="panel" id="stats-panel">
+                    <div class="section-header" style="margin-bottom:7px;"><i class="fas fa-chart-bar"></i>Estadísticas</div>
+                    <div class="stats-grid">
+                        <div class="stats-card">
+                            <div class="label">Actual</div>
+                            <div class="value" id="current-time">-</div>
+                        </div>
+                        <div class="stats-card" id="stat-best">
+                            <div class="label">Mejor (PB)</div>
+                            <div class="value" id="best-time">-</div>
+                        </div>
+                        <div class="stats-card">
+                            <div class="label">Avg de 5</div>
+                            <div class="value" id="avg5-time">-</div>
+                        </div>
+                        <div class="stats-card">
+                            <div class="label">Avg de 12</div>
+                            <div class="value" id="avg12-time">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- History panel -->
+                <div class="panel" id="history-panel">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+                        <span class="section-header"><i class="fas fa-history"></i>Historial</span>
+                        <button id="clear-times" class="btn-danger" style="font-size:0.68rem;padding:3px 8px;">
+                            <i class="fas fa-trash"></i>Borrar todo
+                        </button>
+                    </div>
+                    <div id="times-list" aria-live="polite">
+                        <div style="text-align:center;color:#94a3b8;padding:20px 0;font-size:0.8rem;">
+                            <i class="fas fa-clock" style="display:block;margin-bottom:6px;font-size:1.2rem;"></i>
+                            Cargando tiempos...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CENTER COLUMN: Scramble + Timer -->
+            <div id="center-col">
+                <!-- Scramble panel (center) -->
+                <div class="panel" id="scramble-panel">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                        <span class="section-header"><i class="fas fa-random"></i>Scramble Actual</span>
+                        <span id="current-category" style="font-size:0.65rem;background:rgba(30,41,59,0.8);color:var(--primary-color);padding:2px 8px;border-radius:10px;">3x3x3</span>
+                    </div>
+                    <div class="scramble-text" id="scramble" aria-live="polite"></div>
+                    <!-- Keep hidden right-sync element -->
+                    <div class="scramble-text hidden" id="scramble-right" style="display:none;"></div>
+                </div>
+
+                <!-- Timer panel (center) -->
+                <div class="panel" id="timer-panel">
+                    <div id="timer" aria-live="polite">0.00</div>
+                    <div class="inspection-timer hidden" id="inspection-timer" aria-live="polite">15</div>
+                    <div id="timer-touch-area" role="button" tabindex="0">
+                        <span id="timer-instruction" style="font-size:0.78rem;color:#94a3b8;text-align:center;padding:0 10px;">
+                            Toca aquí o presiona espacio para comenzar
+                        </span>
+                    </div>
+                    <!-- Penalty bar: shown after each solve -->
+                    <div id="penalty-bar" style="display:none;gap:10px;align-items:center;justify-content:center;margin-top:8px;flex-wrap:wrap;">
+                        <button id="pen-ok"  style="padding:7px 18px;background:#2563eb;color:white;border:none;border-radius:8px;font-weight:700;font-size:0.85rem;cursor:pointer;">✓ OK</button>
+                        <button id="pen-p2"  style="padding:7px 18px;background:#d97706;color:white;border:none;border-radius:8px;font-weight:700;font-size:0.85rem;cursor:pointer;">+2</button>
+                        <button id="pen-dnf" style="padding:7px 18px;background:#dc2626;color:white;border:none;border-radius:8px;font-weight:700;font-size:0.85rem;cursor:pointer;">DNF</button>
+                        <button id="pen-del" style="padding:7px 14px;background:rgba(30,41,59,0.8);color:#f87171;border:1px solid rgba(248,113,113,0.4);border-radius:8px;font-size:0.85rem;cursor:pointer;"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT COLUMN: 2D Preview -->
+            <div id="right-col">
+                <!-- Scramble 3D + visual panel -->
+                <div class="panel" id="right-scramble-panel">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                        <span class="section-header"><i class="fas fa-eye"></i>Vista Previa (2D)</span>
+                        <span style="font-size:0.65rem;background:rgba(30,41,59,0.8);color:var(--primary-color);padding:2px 8px;border-radius:10px;" id="current-category-right">3x3x3</span>
+                    </div>
+                    <div id="scramble-visual-container">
+                        <twisty-player id="scramble-player"
+                            puzzle="3x3x3"
+                            visualization="2D"
+                            hint-facelets="none"
+                            control-panel="none"
+                            background="none"
+                            style="width:100%;height:100%;min-height:200px;"
+                        ></twisty-player>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ── GLOBALS ──
+    let timerInterval, inspectionInterval, startTime;
+    let running = false, ready = false, inspecting = false, holdingTimer = false;
+    let inspectionStarted = false; // true after first tap starts inspection
+    let inspectionElapsed = 0;     // seconds elapsed during inspection
+    let times = [];
+    let currentCategory = '333';
+    let currentScramble = '';
+
+    // ── SETTINGS ──
+    let inspectionTime    = localStorage.getItem('inspection-time')    || '0';
+    let primaryColor      = localStorage.getItem('primary-color')      || '#3b82f6';
+    let accentColor       = localStorage.getItem('accent-color')       || '#f59e0b';
+    let timerColor        = localStorage.getItem('timer-color')        || '#10b981';
+    let theme             = localStorage.getItem('theme')              || 'dark';
+    let soundEnabled      = localStorage.getItem('sound-enabled')      !== 'false';
+    let vibrationEnabled  = localStorage.getItem('vibration-enabled')  !== 'false';
+    let keyboardSounds    = localStorage.getItem('keyboard-sounds')    !== 'false';
+    let timerSensitivity  = parseInt(localStorage.getItem('timer-sensitivity') || '5');
+    let panelOpacity      = parseInt(localStorage.getItem('panel-opacity')     || '85');
+    let fontSize          = parseInt(localStorage.getItem('font-size')         || '14');
+    let scrambleLength    = parseInt(localStorage.getItem('scramble-length')   || '20');
+    let autoScramble      = localStorage.getItem('auto-scramble') !== 'false';
+
+    // ── DOM ──
+    const timerDisplay          = document.getElementById('timer');
+    const inspectionTimerDisplay= document.getElementById('inspection-timer');
+    const timerTouchArea        = document.getElementById('timer-touch-area');
+    const timerInstruction      = document.getElementById('timer-instruction');
+    const scrambleDisplay       = document.getElementById('scramble');
+    const scrambleRight         = document.getElementById('scramble-right');
+    const timesList             = document.getElementById('times-list');
+    const clearTimesBtn         = document.getElementById('clear-times');
+    const currentTimeDisplay    = document.getElementById('current-time');
+    const bestTimeDisplay       = document.getElementById('best-time');
+    const avg5TimeDisplay       = document.getElementById('avg5-time');
+    const avg12TimeDisplay      = document.getElementById('avg12-time');
+    const statBestCard          = document.getElementById('stat-best');
+    const currentCategorySpan   = document.getElementById('current-category');
+    const currentCategoryDisplay= document.getElementById('current-category-display');
+    const currentCategoryRight  = document.getElementById('current-category-right');
+    const currentUsernameDisplay= document.getElementById('current-username');
+    const userStatsDisplay      = document.getElementById('user-stats');
+    const categoryDropdown      = document.getElementById('category-dropdown');
+    const trainingDropdown      = document.getElementById('training-dropdown');
+    const userDropdown          = document.getElementById('user-dropdown');
+    const settingsPanel         = document.getElementById('settings-panel');
+    const settingsOverlay       = document.getElementById('settings-overlay');
+    const fullscreenBtn         = document.getElementById('fullscreen-btn');
+    const fullscreenIcon        = document.getElementById('fullscreen-icon');
+
+    const timerStartSound       = document.getElementById('timer-start-sound');
+    const timerStopSound        = document.getElementById('timer-stop-sound');
+    const inspectionWarningSound= document.getElementById('inspection-warning-sound');
+
+    // ── PENALTY BAR (declared early so startInspection/prepareTimer can call hidePenaltyBar) ──
+    const penaltyBar = document.getElementById('penalty-bar');
+    let penaltyBarEntry = null;
+    function hidePenaltyBar() { penaltyBar.style.display = 'none'; penaltyBarEntry = null; }
+
+    // ── AUTH ──
+    async function checkAuth() {
+        try {
+            const res = await fetch('check_auth.php');
+            const result = await res.json();
+            if (!result.authenticated) { window.location.href = 'landing.html'; return false; }
+            currentUsernameDisplay.textContent = result.username;
+            return true;
+        } catch(e) {
+            window.location.href = 'landing.html';
+            return false;
+        }
+    }
+
+    async function logout() {
+        try {
+            const fd = new FormData();
+            fd.append('action','logout');
+            await fetch('auth.php', { method:'POST', body:fd });
+        } catch(e) {}
+        window.location.href = 'landing.html';
+    }
+
+    // ── DB ──
+    async function saveTimeToDB(entry) {
+        try {
+            const fd = new FormData();
+            fd.append('action','save_time');
+            fd.append('category', entry.category);
+            fd.append('time_value', entry.time);
+            fd.append('scramble', entry.scramble);
+            fd.append('penalty', entry.penalty || 'none');
+            fd.append('session_id','default');
+            const res = await fetch('times.php', { method:'POST', body:fd });
+            return await res.json();
+        } catch(e) { return false; }
+    }
+
+    async function loadTimes() {
+        try {
+            const fd = new FormData();
+            fd.append('action','get_times');
+            fd.append('category', currentCategory);
+            fd.append('session_id','default');
+            fd.append('limit', 200);
+            const res = await fetch('times.php', { method:'POST', body:fd });
+            const result = await res.json();
+            if (result.success) {
+                times = result.times.map(t => ({
+                    time: parseFloat(t.time_value),
+                    scramble: t.scramble,
+                    date: t.created_at,
+                    category: t.category,
+                    penalty: t.penalty === 'none' ? undefined : t.penalty,
+                    id: t.id
+                }));
+                updateUserStats();
+                updateStats();
+                renderTimesList();
+            }
+        } catch(e) {
+            times = [];
+            timesList.innerHTML = '<div style="text-align:center;color:#f87171;padding:16px;font-size:0.8rem;"><i class="fas fa-exclamation-triangle" style="display:block;margin-bottom:6px;"></i>Error cargando tiempos</div>';
+        }
+    }
+
+    async function deleteTimeFromDB(id) {
+        try {
+            const fd = new FormData();
+            fd.append('action','delete_time');
+            fd.append('time_id', id);
+            const res = await fetch('times.php', { method:'POST', body:fd });
+            const result = await res.json();
+            return result.success;
+        } catch(e) { return false; }
+    }
+
+    async function updatePenaltyInDB(id, penalty) {
+        try {
+            const fd = new FormData();
+            fd.append('action','update_penalty');
+            fd.append('time_id', id);
+            fd.append('penalty', penalty === undefined ? 'none' : penalty);
+            const res = await fetch('times.php', { method:'POST', body:fd });
+            const result = await res.json();
+            return result.success;
+        } catch(e) { return false; }
+    }
+
+    // ── FORMAT ──
+    function formatTimeDisplay(t, ms=true) {
+        if (isNaN(t) || t===null) return '-';
+        if (t===Infinity) return 'DNF';
+        const m = Math.floor(t/60), s = t%60;
+        if (m > 0) return ms ? `${m}:${s<10?'0':''}${s.toFixed(2)}` : `${m}:${s<10?'0':''}${Math.floor(s)}`;
+        return ms ? s.toFixed(2) : Math.floor(s).toString();
+    }
+
+    function formatTimeWithPenalty(t, penalty) {
+        if (penalty==='DNF') return 'DNF';
+        const d = penalty==='+2' ? t+2 : t;
+        return formatTimeDisplay(d) + (penalty==='+2' ? '+' : '');
+    }
+
+    // ── INIT ──
+    async function initializeApp() {
+        const ok = await checkAuth();
+        if (!ok) return;
+        applyAllSettings();
+        await loadTimes();
+        generateNewScramble(currentCategory);
+    }
+
+    initializeApp();
+
+    // ── SETTINGS APPLY ──
+    function applyAllSettings() {
+        applyTheme();
+        updateColors();
+        updatePanelOpacity();
+        updateFontSize();
+        const ir = document.querySelector(`input[name="inspection"][value="${inspectionTime}"]`);
+        if (ir) ir.checked = true;
+        const tr = document.querySelector(`input[name="theme"][value="${theme}"]`);
+        if (tr) tr.checked = true;
+
+        const se = document.getElementById('sound-enabled');
+        const ve = document.getElementById('vibration-enabled');
+        const ks = document.getElementById('keyboard-sounds');
+        const as = document.getElementById('auto-scramble');
+        const ts = document.getElementById('timer-sensitivity');
+        const po = document.getElementById('panel-opacity');
+        const fs = document.getElementById('font-size');
+        const sl = document.getElementById('scramble-length');
+        if (se) se.checked = soundEnabled;
+        if (ve) ve.checked = vibrationEnabled;
+        if (ks) ks.checked = keyboardSounds;
+        if (as) as.checked = autoScramble;
+        if (ts) ts.value = timerSensitivity;
+        if (po) po.value = panelOpacity;
+        if (fs) fs.value = fontSize;
+        if (sl) sl.value = scrambleLength;
+
+        document.querySelectorAll('.color-option[data-color]').forEach(o => {
+            o.classList.toggle('selected', o.getAttribute('data-color')===primaryColor);
+        });
+        document.querySelectorAll('.color-option[data-accent]').forEach(o => {
+            o.classList.toggle('selected', o.getAttribute('data-accent')===accentColor);
+        });
+        document.querySelectorAll('.color-option[data-timer]').forEach(o => {
+            o.classList.toggle('selected', o.getAttribute('data-timer')===timerColor);
+        });
+    }
+
+    // ── TIMER LOGIC ──
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keyup', handleKeyUp);
+    timerTouchArea.addEventListener('mousedown', handleTouchStart);
+    timerTouchArea.addEventListener('touchstart', handleTouchStart, {passive:false});
+    timerTouchArea.addEventListener('mouseup', handleTouchEnd);
+    timerTouchArea.addEventListener('touchend', handleTouchEnd, {passive:false});
+
+    function handleKeyDown(e) {
+        if (settingsPanel.classList.contains('open')) return;
+        if (e.code==='Space' && e.target.matches('input[type="text"],textarea')) return;
+        if (e.code!=='Space' && e.target.matches('input:not([type="button"]):not([type="submit"]):not([type="reset"]),textarea,select')) return;
+        if (e.code==='Space') {
+            e.preventDefault();
+            if (holdingTimer) return;
+            holdingTimer = true;
+            if (running) { stopTimer(); return; }
+            if (inspecting) { stopInspectionAndStartTimer(); return; }
+            if (!ready && !inspecting && !running) {
+                if (inspectionTime==='15') startInspection();
+                else prepareTimer();
+            }
+        }
+    }
+
+    function handleKeyUp(e) {
+        if (settingsPanel.classList.contains('open')) return;
+        if (e.code==='Space' && e.target.matches('input[type="text"],textarea')) return;
+        if (e.code!=='Space' && e.target.matches('input:not([type="button"]):not([type="submit"]):not([type="reset"]),textarea,select')) return;
+        if (e.code==='Space') {
+            e.preventDefault();
+            if (ready && !inspecting && !running) startTimer();
+            holdingTimer = false;
+        }
+    }
+
+    function stopTimerOnAnyKey(e) {
+        if (e.target.matches('input[type="text"],input[type="number"],input[type="search"],textarea,select')) return;
+        if (running && e.code!=='Space') { e.preventDefault(); stopTimer(); }
+    }
+
+    function handleTouchStart(e) {
+        if (settingsPanel.classList.contains('open')) return;
+        e.preventDefault();
+        if (holdingTimer) return;
+        holdingTimer = true;
+        if (running) { stopTimer(); return; }
+        if (inspecting) { stopInspectionAndStartTimer(); return; }
+        if (!ready && !inspecting && !running) {
+            if (inspectionTime==='15') startInspection();
+            else prepareTimer();
+        }
+    }
+
+    function handleTouchEnd(e) {
+        if (settingsPanel.classList.contains('open')) return;
+        e.preventDefault();
+        if (ready && !inspecting && !running) startTimer();
+        holdingTimer = false;
+    }
+
+    function startInspection() {
+        inspecting = true;
+        inspectionElapsed = 0;
+        hidePenaltyBar();
+        let timeLeft = 15;
+        inspectionTimerDisplay.textContent = timeLeft;
+        inspectionTimerDisplay.classList.remove('hidden');
+        timerInstruction.textContent = 'Inspección… toca de nuevo para iniciar';
+        timerTouchArea.classList.add('ready-state');
+        timerDisplay.style.color = timerColor;
+        timerDisplay.textContent = formatTimeDisplay(0);
+        inspectionInterval = setInterval(() => {
+            inspectionElapsed++;
+            timeLeft = 15 - inspectionElapsed;
+            if (timeLeft > 0) {
+                inspectionTimerDisplay.textContent = timeLeft;
+            } else if (inspectionElapsed === 15) {
+                // Over 15s → +2
+                inspectionTimerDisplay.textContent = '+2';
+                inspectionTimerDisplay.classList.add('inspection-warning');
+                playSound(inspectionWarningSound); vibrate(100);
+            } else if (inspectionElapsed === 17) {
+                // Over 17s → DNF
+                inspectionTimerDisplay.textContent = 'DNF';
+            }
+            if (timeLeft===8 || timeLeft===3) {
+                inspectionTimerDisplay.classList.add('inspection-warning');
+                playSound(inspectionWarningSound); vibrate(100);
+                setTimeout(() => inspectionTimerDisplay.classList.remove('inspection-warning'), 500);
+            }
+        }, 1000);
+    }
+
+    function stopInspectionAndStartTimer() {
+        clearInterval(inspectionInterval);
+        inspectionTimerDisplay.classList.remove('inspection-warning');
+        inspectionTimerDisplay.classList.add('hidden');
+        inspecting = false;
+
+        // Determine if penalty applies based on elapsed inspection time
+        let applyPenalty = false;
+        let isDNF = false;
+        if (inspectionElapsed >= 17) isDNF = true;
+        else if (inspectionElapsed >= 15) applyPenalty = true;
+
+        if (isDNF) {
+            // Save a DNF automatically
+            inspecting = false; ready = false;
+            const entry = {
+                time: 0, scramble: currentScramble,
+                date: new Date().toISOString(), category: currentCategory, penalty: 'DNF'
+            };
+            saveTimeToDB(entry).then(result => {
+                if (result && result.success) {
+                    entry.id = result.id;
+                    times.unshift(entry);
+                    updateStats(); renderTimesList(); updateUserStats();
+                    if (autoScramble) generateNewScramble(currentCategory);
+                }
+            });
+            timerDisplay.textContent = 'DNF';
+            timerDisplay.style.color = '#ef4444';
+            timerInstruction.textContent = 'DNF — Toca aquí o presiona espacio para comenzar';
+            timerTouchArea.classList.remove('ready-state');
+            vibrate([100,50,100]);
+        } else {
+            // Start the actual solve timer
+            if (applyPenalty) localStorage.setItem('timer_start_penalty_flag','true');
+            else localStorage.removeItem('timer_start_penalty_flag');
+            prepareTimer(applyPenalty);
+            startTimer(applyPenalty);
+        }
+    }
+
+    // Keep old stopInspection for compatibility (e.g. called from elsewhere)
+    function stopInspection(timeout=false, userStop=false) {
+        stopInspectionAndStartTimer();
+    }
+
+    function prepareTimer(isPenalty=false) {
+        ready = true;
+        hidePenaltyBar();
+        timerDisplay.style.color = timerColor;
+        timerDisplay.textContent = isPenalty ? '+2.00' : formatTimeDisplay(0);
+        timerTouchArea.classList.add('ready-state');
+        timerInstruction.textContent = 'Listo — suelta para iniciar';
+    }
+
+    function startTimer(applyPenalty=false) {
+        if (!ready && !applyPenalty) return;
+        running = true; ready = false; inspecting = false;
+        clearInterval(inspectionInterval);
+        inspectionTimerDisplay.classList.add('hidden');
+        startTime = Date.now();
+        if (applyPenalty) localStorage.setItem('timer_start_penalty_flag','true');
+        else localStorage.removeItem('timer_start_penalty_flag');
+        timerInterval = setInterval(updateTimerDisplay, 10);
+        timerTouchArea.classList.remove('ready-state');
+        timerDisplay.style.color = timerColor;
+        timerDisplay.textContent = formatTimeDisplay(0);
+        timerInstruction.textContent = 'Presiona cualquier tecla o toca para detener';
+        playSound(timerStartSound); vibrate(50);
+        document.addEventListener('keydown', stopTimerOnAnyKey);
+    }
+
+    function stopTimer() {
+        if (!running) return;
+        running = false;
+        clearInterval(timerInterval);
+        document.removeEventListener('keydown', stopTimerOnAnyKey);
+        const elapsed = (Date.now() - startTime) / 1000;
+        let penaltyType;
+        if (localStorage.getItem('timer_start_penalty_flag')==='true') {
+            penaltyType = '+2';
+            localStorage.removeItem('timer_start_penalty_flag');
+        }
+        const entry = {
+            time: elapsed, scramble: currentScramble,
+            date: new Date().toISOString(), category: currentCategory, penalty: penaltyType
+        };
+        saveTimeToDB(entry).then(result => {
+            if (result && result.success) {
+                entry.id = result.id;
+                times.unshift(entry);
+                if (times.length > 1000) times = times.slice(0, 1000);
+
+                // PB check
+                const catTimes = times.filter(t => t.category===currentCategory && t.penalty!=='DNF');
+                const rawTimes = catTimes.map(t => t.penalty==='+2' ? t.time+2 : t.time);
+                let recorded = elapsed;
+                if (penaltyType==='+2') recorded += 2;
+                const isPB = penaltyType!=='DNF' && (rawTimes.length<=1 || recorded===Math.min(...rawTimes));
+                if (isPB) showPBAnimation(recorded);
+
+                updateUserStats();
+                updateStats();
+                renderTimesList();
+                if (autoScramble) generateNewScramble(currentCategory);
+                timerInstruction.textContent = 'Toca aquí o presiona espacio para comenzar';
+                timerDisplay.style.color = '#ef4444';
+                timerDisplay.textContent = formatTimeWithPenalty(elapsed, penaltyType);
+                playSound(timerStopSound); vibrate(100);
+
+                // Show penalty bar for this entry
+                showPenaltyBar(entry);
+            } else {
+                alert('Error al guardar el tiempo. Intenta nuevamente.');
+            }
+        });
+    }
+
+    function resetTimer() {
+        running=false; ready=false; inspecting=false; holdingTimer=false;
+        inspectionElapsed=0;
+        clearInterval(timerInterval); clearInterval(inspectionInterval);
+        timerDisplay.textContent = formatTimeDisplay(0);
+        timerDisplay.style.color = '#ef4444';
+        timerTouchArea.classList.remove('ready-state');
+        inspectionTimerDisplay.classList.add('hidden');
+        inspectionTimerDisplay.classList.remove('inspection-warning');
+        timerInstruction.textContent = 'Toca aquí o presiona espacio para comenzar';
+        document.removeEventListener('keydown', stopTimerOnAnyKey);
+        localStorage.removeItem('timer_start_penalty_flag');
+        hidePenaltyBar();
+    }
+
+    function showPenaltyBar(entry) {
+        penaltyBarEntry = entry;
+        penaltyBar.style.display = 'flex';
+        // Update button highlights to match current penalty
+        updatePenaltyBarHighlight(entry.penalty);
+    }
+
+    function updatePenaltyBarHighlight(pen) {
+        document.getElementById('pen-ok').style.opacity  = (!pen || pen==='OK') ? '1' : '0.5';
+        document.getElementById('pen-p2').style.opacity  = pen==='+2'  ? '1' : '0.5';
+        document.getElementById('pen-dnf').style.opacity = pen==='DNF' ? '1' : '0.5';
+    }
+
+    document.getElementById('pen-ok').addEventListener('click', async () => {
+        if (!penaltyBarEntry) return;
+        const gi = times.findIndex(t=>t===penaltyBarEntry);
+        if (gi===-1) return;
+        const ok = await updatePenaltyInDB(penaltyBarEntry.id, undefined);
+        if (ok) {
+            times[gi].penalty = undefined;
+            timerDisplay.textContent = formatTimeWithPenalty(times[gi].time, undefined);
+            updateStats(); renderTimesList();
+            updatePenaltyBarHighlight(undefined);
+        }
+    });
+
+    document.getElementById('pen-p2').addEventListener('click', async () => {
+        if (!penaltyBarEntry) return;
+        const gi = times.findIndex(t=>t===penaltyBarEntry);
+        if (gi===-1) return;
+        const ok = await updatePenaltyInDB(penaltyBarEntry.id, '+2');
+        if (ok) {
+            times[gi].penalty = '+2';
+            timerDisplay.textContent = formatTimeWithPenalty(times[gi].time, '+2');
+            updateStats(); renderTimesList();
+            updatePenaltyBarHighlight('+2');
+        }
+    });
+
+    document.getElementById('pen-dnf').addEventListener('click', async () => {
+        if (!penaltyBarEntry) return;
+        const gi = times.findIndex(t=>t===penaltyBarEntry);
+        if (gi===-1) return;
+        const ok = await updatePenaltyInDB(penaltyBarEntry.id, 'DNF');
+        if (ok) {
+            times[gi].penalty = 'DNF';
+            timerDisplay.textContent = 'DNF';
+            timerDisplay.style.color = '#ef4444';
+            updateStats(); renderTimesList();
+            updatePenaltyBarHighlight('DNF');
+        }
+    });
+
+    document.getElementById('pen-del').addEventListener('click', async () => {
+        if (!penaltyBarEntry) return;
+        const gi = times.findIndex(t=>t===penaltyBarEntry);
+        if (gi===-1) return;
+        const ok = await deleteTimeFromDB(penaltyBarEntry.id);
+        if (ok) {
+            times.splice(gi, 1);
+            updateStats(); renderTimesList(); updateUserStats();
+            timerDisplay.textContent = formatTimeDisplay(0);
+            hidePenaltyBar();
+        }
+    });
+
+    function updateTimerDisplay() {
+        timerDisplay.textContent = formatTimeDisplay((Date.now()-startTime)/1000);
+    }
+
+    // ── PB ANIMATION ──
+    function showPBAnimation(timeValue) {
+        // Flash overlay
+        const flash = document.createElement('div');
+        flash.className = 'pb-flash-overlay';
+        document.body.appendChild(flash);
+        setTimeout(() => flash.remove(), 1000);
+
+        // Stars
+        const stars = document.createElement('div');
+        stars.className = 'pb-stars';
+        stars.textContent = '★ ★ ★';
+        document.body.appendChild(stars);
+        setTimeout(() => stars.remove(), 800);
+
+        // Badge
+        const badge = document.createElement('div');
+        badge.className = 'pb-alert';
+        badge.innerHTML = `<i class="fas fa-trophy" style="color:#92400e;font-size:1.1rem;"></i><span>¡NUEVO PB! &nbsp;${formatTimeDisplay(timeValue)}</span>`;
+        document.body.appendChild(badge);
+
+        // PB star on stat card
+        statBestCard.classList.add('is-pb');
+
+        setTimeout(() => {
+            badge.classList.add('pb-exit');
+            setTimeout(() => badge.remove(), 500);
+        }, 3500);
+    }
+
+    // ── STATS ──
+    function updateUserStats() {
+        const total = times.length;
+        const cat   = times.filter(t => t.category===currentCategory).length;
+        userStatsDisplay.textContent = `${total} solves • ${cat} en ${getCategoryName(currentCategory)}`;
+    }
+
+    function updateStats() {
+        const catTimes = times.filter(t => t.category===currentCategory);
+        statBestCard.classList.remove('is-pb');
+
+        if (catTimes.length===0) {
+            currentTimeDisplay.textContent='-'; bestTimeDisplay.textContent='-';
+            avg5TimeDisplay.textContent='-'; avg12TimeDisplay.textContent='-';
+            return;
+        }
+
+        const cur = catTimes[0];
+        currentTimeDisplay.textContent = formatTimeWithPenalty(cur.time, cur.penalty);
+
+        const valid = catTimes.filter(t=>t.penalty!=='DNF').map(t=>t.penalty==='+2'?t.time+2:t.time);
+        const best  = valid.length ? Math.min(...valid) : null;
+        bestTimeDisplay.textContent = best ? formatTimeDisplay(best) : '-';
+
+        // Show star if latest is PB
+        const curVal = cur.penalty==='+2' ? cur.time+2 : (cur.penalty==='DNF' ? Infinity : cur.time);
+        if (best && curVal===best && cur.penalty!=='DNF') {
+            statBestCard.classList.add('is-pb');
+        }
+
+        const ao5  = calculateAverage(catTimes, 5);
+        const ao12 = calculateAverage(catTimes, 12);
+        avg5TimeDisplay.textContent  = ao5  ? (typeof ao5==='string'  ? ao5  : formatTimeDisplay(ao5))  : '-';
+        avg12TimeDisplay.textContent = ao12 ? (typeof ao12==='string' ? ao12 : formatTimeDisplay(ao12)) : '-';
+    }
+
+    function calculateAverage(entries, n) {
+        if (entries.length < n) return null;
+        const subset = entries.slice(0,n).map(e => e.penalty==='DNF' ? Infinity : (e.penalty==='+2' ? e.time+2 : e.time));
+        const dnf = subset.filter(t=>t===Infinity).length;
+        if (n<=3 && dnf>=1) return 'DNF';
+        if (n>3  && dnf>=2) return 'DNF';
+        const sorted = [...subset].sort((a,b)=>a-b);
+        const trimmed = n>=5 ? sorted.slice(1,-1) : sorted;
+        const sum = trimmed.reduce((a,b)=>a+b,0);
+        if (sum===Infinity) return 'DNF';
+        return trimmed.length ? sum/trimmed.length : null;
+    }
+
+    // ── RENDER TIMES ──
+    function renderTimesList() {
+        const catTimes = times.filter(t=>t.category===currentCategory);
+        if (!catTimes.length) {
+            timesList.innerHTML = `<div style="text-align:center;color:#94a3b8;padding:20px 0;font-size:0.78rem;">
+                <i class="fas fa-clock" style="display:block;margin-bottom:6px;font-size:1.2rem;"></i>
+                No hay tiempos para ${getCategoryName(currentCategory)}
+            </div>`;
+            return;
+        }
+
+        // Find best valid time
+        const validTimes = catTimes.filter(t=>t.penalty!=='DNF').map(t=>t.penalty==='+2'?t.time+2:t.time);
+        const bestTime = validTimes.length ? Math.min(...validTimes) : null;
+
+        timesList.innerHTML = catTimes.map((entry, i) => {
+            const disp = formatTimeWithPenalty(entry.time, entry.penalty);
+            const entryVal = entry.penalty==='+2' ? entry.time+2 : (entry.penalty==='DNF' ? Infinity : entry.time);
+            const isBest = bestTime!==null && entryVal===bestTime && entry.penalty!=='DNF';
+            let col = 'white';
+            if (entry.penalty==='+2') col='#fbbf24';
+            else if (entry.penalty==='DNF') col='#f87171';
+
+            // Star only on the single best entry
+            const starHtml = isBest ? '<span style="color:#f59e0b;font-size:0.9rem;margin-left:3px;">★</span>' : '';
+
+            return `<div class="time-entry" data-render-index="${i}">
+                <div style="display:flex;align-items:center;gap:4px;">
+                    <span style="color:#64748b;width:20px;text-align:right;font-size:0.7rem;">${i+1}.</span>
+                    <span style="color:${col};font-family:monospace;">${disp}</span>${starHtml}
+                </div>
+                <div style="display:flex;align-items:center;gap:2px;">
+                    <button class="penalty-btn" data-index="${i}" data-penalty="OK"
+                        style="background:${!entry.penalty?'#2563eb':'rgba(30,41,59,0.8)'};color:${!entry.penalty?'white':'#94a3b8'};">OK</button>
+                    <button class="penalty-btn" data-index="${i}" data-penalty="+2"
+                        style="background:${entry.penalty==='+2'?'#d97706':'rgba(30,41,59,0.8)'};color:${entry.penalty==='+2'?'white':'#94a3b8'};">+2</button>
+                    <button class="penalty-btn" data-index="${i}" data-penalty="DNF"
+                        style="background:${entry.penalty==='DNF'?'#dc2626':'rgba(30,41,59,0.8)'};color:${entry.penalty==='DNF'?'white':'#94a3b8'};">DNF</button>
+                    <button class="delete-btn" data-index="${i}"><i class="fas fa-trash-alt"></i></button>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    timesList.addEventListener('click', function(e) {
+        const pb = e.target.closest('.penalty-btn');
+        const db = e.target.closest('.delete-btn');
+        const row= e.target.closest('.time-entry');
+        if (pb) {
+            e.stopPropagation();
+            applyPenalty(parseInt(pb.dataset.index), pb.dataset.penalty);
+        } else if (db) {
+            e.stopPropagation();
+            deleteTimeEntry(parseInt(db.dataset.index));
+        } else if (row) {
+            const idx = parseInt(row.dataset.renderIndex);
+            const ct = times.filter(t=>t.category===currentCategory);
+            if (ct[idx]) showScrambleModal(ct[idx].scramble, ct[idx]);
+        }
+    });
+
+    async function applyPenalty(idx, val) {
+        const ct = times.filter(t=>t.category===currentCategory);
+        const entry = ct[idx];
+        if (!entry) return;
+        const gi = times.findIndex(t=>t===entry);
+        if (gi===-1) return;
+        const ok = await updatePenaltyInDB(entry.id, val==='OK' ? undefined : val);
+        if (ok) { times[gi].penalty = val==='OK' ? undefined : val; updateStats(); renderTimesList(); }
+    }
+
+    async function deleteTimeEntry(idx) {
+        const ct = times.filter(t=>t.category===currentCategory);
+        const entry = ct[idx];
+        if (!entry) return;
+        const gi = times.findIndex(t=>t===entry);
+        if (gi===-1) return;
+        const ok = await deleteTimeFromDB(entry.id);
+        if (ok) { times.splice(gi,1); updateStats(); renderTimesList(); updateUserStats(); }
+    }
+
+    clearTimesBtn.addEventListener('click', async function() {
+        if (!confirm(`¿Borrar TODOS los tiempos de ${getCategoryName(currentCategory)}?`)) return;
+        const toDelete = times.filter(t=>t.category===currentCategory);
+        let ok = 0;
+        for (const e of toDelete) { if (await deleteTimeFromDB(e.id)) ok++; }
+        if (ok===toDelete.length) {
+            times = times.filter(t=>t.category!==currentCategory);
+            updateStats(); renderTimesList(); updateUserStats();
+        } else {
+            alert('Error al eliminar algunos tiempos.');
+        }
+    });
+
+    function showScrambleModal(scrambleText, entry) {
+        const modal = document.createElement('div');
+        modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:500;padding:16px;';
+        const date = new Date(entry.date).toLocaleDateString();
+        const puz = puzzleMap[entry.category] || '3x3x3';
+        const showPreview = !['333fm','333mbf','444bf','555bf'].includes(entry.category);
+        modal.innerHTML = `
+            <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:20px;max-width:420px;width:100%;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                    <span style="font-weight:600;color:var(--primary-color);"><i class="fas fa-random mr-2"></i>Scramble</span>
+                    <span style="font-size:0.7rem;background:rgba(30,41,59,0.8);color:var(--primary-color);padding:2px 8px;border-radius:10px;">${getCategoryName(entry.category)}</span>
+                </div>
+                <div style="font-family:monospace;background:rgba(15,23,42,0.8);border-left:3px solid var(--primary-color);padding:10px;border-radius:6px;margin-bottom:12px;font-size:0.85rem;line-height:1.6;white-space:pre-wrap;">${scrambleText}</div>
+                ${showPreview ? `<div style="display:flex;justify-content:center;margin-bottom:12px;background:rgba(15,23,42,0.5);border-radius:8px;padding:8px;">
+                    <twisty-player
+                        puzzle="${puz}"
+                        alg="${scrambleText.replace(/"/g,'&quot;')}"
+                        visualization="2D"
+                        hint-facelets="none"
+                        control-panel="none"
+                        background="none"
+                        style="width:100%;height:180px;">
+                    </twisty-player>
+                </div>` : ''}
+                <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:#94a3b8;margin-bottom:12px;">
+                    <span><i class="far fa-calendar-alt mr-1"></i>${date}</span>
+                    <span><i class="far fa-clock mr-1"></i>${formatTimeWithPenalty(entry.time, entry.penalty)}</span>
+                </div>
+                <button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;padding:8px;background:var(--primary-color);color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;">
+                    <i class="fas fa-times mr-1"></i>Cerrar
+                </button>
+            </div>`;
+        document.body.appendChild(modal);
+        modal.addEventListener('click', e => { if(e.target===modal) modal.remove(); });
+    }
+
+    // ── SCRAMBLE ──
+    const puzzleMap = {
+        '333':'3x3x3','222':'2x2x2','444':'4x4x4','555':'5x5x5',
+        '666':'6x6x6','777':'7x7x7','333bf':'3x3x3','333fm':'3x3x3',
+        '333oh':'3x3x3','333mbf':'3x3x3','minx':'megaminx',
+        'pyram':'pyraminx','skewb':'skewb','sq1':'square1',
+        'clock':'clock','444bf':'4x4x4','555bf':'5x5x5'
+    };
+
+    function generateNewScramble(cat) {
+        currentScramble = generateScramble(cat);
+        updateScrambleDisplay();
+        resetTimer();
+    }
+
+    function updateScrambleDisplay() {
+        scrambleDisplay.textContent = currentScramble;
+        scrambleRight.textContent   = currentScramble;
+        const player = document.getElementById('scramble-player');
+        const container = document.getElementById('scramble-visual-container');
+        if (player) {
+            const puz = puzzleMap[currentCategory] || '3x3x3';
+            player.setAttribute('puzzle', puz);
+            player.setAttribute('alg', currentScramble);
+            player.setAttribute('visualization','2D');
+            const hide = ['333fm','333mbf'].includes(currentCategory);
+            container.style.display = hide ? 'none' : 'flex';
+        }
+    }
+
+    function generateScramble(cat) {
+        if (!cat || cat==='333' || cat==='333oh' || cat==='333bf') return gen3x3();
+        if (cat==='222') return gen2x2();
+        if (cat==='444') return genNxN(4,40);
+        if (cat==='555') return genNxN(5,60);
+        if (cat==='666') return genNxN(6,80);
+        if (cat==='777') return genNxN(7,100);
+        if (cat==='333fm') return "Fewest Moves – usa generador oficial";
+        if (cat==='clock') return genClock();
+        if (cat==='minx') return genMegaminx();
+        if (cat==='pyram') return genPyraminx();
+        if (cat==='skewb') return genSkewb();
+        if (cat==='sq1') return genSquare1();
+        if (cat==='444bf' || cat==='555bf') return "BLD Grande – usa generador oficial";
+        if (cat==='333mbf') return "MultiBLD – usa generador oficial";
+        return `Scramble para ${getCategoryName(cat)}`;
+    }
+
+    function gen3x3() {
+        const faces=['U','D','F','B','R','L'], mods=["","'","2"], s=[];
+        let last='',secLast='';
+        for (let i=0;i<scrambleLength;i++) {
+            let f;
+            do { f=faces[Math.floor(Math.random()*faces.length)]; }
+            while (f===last || (f===secLast && opp(f,last)));
+            s.push(f+mods[Math.floor(Math.random()*3)]);
+            secLast=last; last=f;
+        }
+        return s.join(' ');
+    }
+    function opp(a,b) { return ({U:'D',D:'U',F:'B',B:'F',R:'L',L:'R'})[a]===b; }
+    function gen2x2() {
+        const faces=['R','U','F'],mods=["","'","2"],s=[];
+        let last='';
+        const n=Math.floor(Math.random()*3)+9;
+        for(let i=0;i<n;i++){let f;do{f=faces[Math.floor(Math.random()*3)];}while(f===last);s.push(f+mods[Math.floor(Math.random()*3)]);last=f;}
+        return s.join(' ');
+    }
+    function genNxN(size,len) {
+        const faces=['U','D','F','B','R','L'],mods=["","'","2"];
+        let moves=[...faces];
+        if(size>=4) moves.push(...faces.map(f=>f+'w'));
+        if(size>=5) moves.push(...faces.map(f=>'2'+f+'w'));
+        if(size>=6) moves.push(...faces.map(f=>'3'+f+'w'));
+        if(size===7) moves.push(...faces.map(f=>'4'+f+'w'));
+        const axOf=f=>{f=f.replace(/^\d/,'').charAt(0);
+            if('UDE'.includes(f.toUpperCase())) return 'Y';
+            if('RLM'.includes(f.toUpperCase())) return 'X';
+            return 'Z';};
+        const s=[];let lastAx='',lastF='';
+        for(let i=0;i<len;i++){
+            let m,ax,bf;
+            do{m=moves[Math.floor(Math.random()*moves.length)];bf=m.replace(/^\d/,'').charAt(0);ax=axOf(bf);}
+            while(ax===lastAx||bf===lastF||ax==='');
+            s.push(m+mods[Math.floor(Math.random()*3)]);
+            lastAx=ax;lastF=bf;
+        }
+        return s.join(' ');
+    }
+    function genClock() {
+        const dials=['UU','UR','UD','DF','DL','DR','DB'],turns=[-5,-4,-3,-2,-1,1,2,3,4,5,6];
+        const s=[];
+        for(let i=0;i<4;i++) s.push(dials[i]+turns[Math.floor(Math.random()*turns.length)]);
+        for(let i=0;i<4;i++) s.push(dials[i+4]+turns[Math.floor(Math.random()*turns.length)]);
+        ['UR','DR','DL','UL'].forEach(p=>{if(Math.random()>0.5) s.push(p);});
+        return s.join(' ');
+    }
+    function genMegaminx() {
+        const R=["R++","R--"],D=["D++","D--"],U=["U","U'"];
+        let seq=[R[Math.floor(Math.random()*2)]];
+        for(let i=0;i<34;i++){seq.push(D[Math.floor(Math.random()*2)]);seq.push(R[Math.floor(Math.random()*2)]);}
+        seq.push(U[Math.floor(Math.random()*2)]);
+        let lines=[];
+        for(let i=0;i<seq.length;i+=10) lines.push(seq.slice(i,i+10).join(' '));
+        return lines.join('\n');
+    }
+    function genPyraminx() {
+        const m=["U","L","R","B"],tips=["u","l","r","b"],mod=["","'"];
+        const s=[];let last='';
+        const n=Math.floor(Math.random()*3)+7;
+        for(let i=0;i<n;i++){let f;do{f=m[Math.floor(Math.random()*4)];}while(f===last);s.push(f+mod[Math.floor(Math.random()*2)]);last=f;}
+        const nt=Math.floor(Math.random()*3)+2;
+        const avail=[...tips];
+        for(let i=0;i<nt;i++){if(!avail.length) break;const ti=Math.floor(Math.random()*avail.length);s.push(avail.splice(ti,1)[0]+mod[Math.floor(Math.random()*2)]);}
+        return s.join(' ');
+    }
+    function genSkewb() {
+        const m=["U","L","R","B"],mod=["","'"];
+        const n=Math.floor(Math.random()*3)+8,s=[];let last='';
+        for(let i=0;i<n;i++){let f;do{f=m[Math.floor(Math.random()*4)];}while(f===last);s.push(f+mod[Math.floor(Math.random()*2)]);last=f;}
+        return s.join(' ');
+    }
+    function genSquare1() {
+        let str='';const n=Math.floor(Math.random()*3)+3;
+        for(let s=0;s<n;s++){
+            const nt=Math.floor(Math.random()*4)+1;
+            for(let i=0;i<nt;i++){
+                let x,y;
+                do{x=Math.floor(Math.random()*12)-5;}while(x===0);
+                do{y=Math.floor(Math.random()*12)-5;}while(y===0);
+                str+=`(${x},${y}) `;
+            }
+            if(s<n-1) str+='/ ';
+        }
+        return str.trim();
+    }
+
+    // ── CATEGORY ──
+    function getCategoryName(code) {
+        const n={'333':'3x3x3','222':'2x2x2','444':'4x4x4','555':'5x5x5','666':'6x6x6','777':'7x7x7',
+            '333bf':'3x3x3 BLD','333fm':'3x3x3 FM','333oh':'3x3x3 OH','clock':'Clock','minx':'Megaminx',
+            'pyram':'Pyraminx','skewb':'Skewb','sq1':'Square-1','444bf':'4x4x4 BLD','555bf':'5x5x5 BLD','333mbf':'3x3x3 MBLD'};
+        return n[code] || code;
+    }
+
+    function updateCategory(cat) {
+        currentCategory = cat;
+        const name = getCategoryName(cat);
+        currentCategorySpan.textContent = name;
+        currentCategoryDisplay.textContent = name;
+        currentCategoryRight.textContent = name;
+        document.querySelectorAll('.category-option').forEach(o => {
+            o.classList.toggle('active-category', o.dataset.category===cat);
+        });
+    }
+
+    document.querySelectorAll('.category-option').forEach(opt => {
+        opt.addEventListener('click', function(e) {
+            e.preventDefault();
+            updateCategory(this.dataset.category);
+            hideDropdown(categoryDropdown);
+            document.getElementById('category-btn').setAttribute('aria-expanded','false');
+            generateNewScramble(currentCategory);
+            loadTimes();
+        });
+    });
+
+    // ── DROPDOWNS ──
+    function toggleDropdown(el) { el.style.display = el.style.display==='block' ? 'none' : 'block'; }
+    function hideDropdown(el)   { el.style.display = 'none'; }
+
+    document.getElementById('category-btn').addEventListener('click', e => {
+        e.stopPropagation(); toggleDropdown(categoryDropdown); hideDropdown(trainingDropdown); hideDropdown(userDropdown);
+    });
+    document.getElementById('training-btn').addEventListener('click', e => {
+        e.stopPropagation(); toggleDropdown(trainingDropdown); hideDropdown(categoryDropdown); hideDropdown(userDropdown);
+    });
+    document.getElementById('user-btn').addEventListener('click', e => {
+        e.stopPropagation(); toggleDropdown(userDropdown); hideDropdown(categoryDropdown); hideDropdown(trainingDropdown);
+    });
+    document.addEventListener('click', () => {
+        hideDropdown(categoryDropdown); hideDropdown(trainingDropdown); hideDropdown(userDropdown);
+    });
+
+    // ── SETTINGS ──
+    function toggleSettings() {
+        settingsPanel.classList.toggle('open');
+        settingsOverlay.classList.toggle('active');
+    }
+    document.getElementById('settings-btn').addEventListener('click', toggleSettings);
+    document.getElementById('close-settings').addEventListener('click', toggleSettings);
+    settingsOverlay.addEventListener('click', toggleSettings);
+
+    document.querySelectorAll('input[name="inspection"]').forEach(r => {
+        r.addEventListener('change', function() { inspectionTime=this.value; localStorage.setItem('inspection-time',this.value); });
+    });
+    document.querySelectorAll('input[name="theme"]').forEach(r => {
+        r.addEventListener('change', function() { theme=this.value; localStorage.setItem('theme',this.value); applyTheme(); });
+    });
+
+    const se = document.getElementById('sound-enabled');
+    const ve = document.getElementById('vibration-enabled');
+    const ks = document.getElementById('keyboard-sounds');
+    const as = document.getElementById('auto-scramble');
+    const ts = document.getElementById('timer-sensitivity');
+    const po = document.getElementById('panel-opacity');
+    const fs = document.getElementById('font-size');
+    const sl = document.getElementById('scramble-length');
+
+    if(se) se.addEventListener('change',function(){ soundEnabled=this.checked; localStorage.setItem('sound-enabled',this.checked); });
+    if(ve) ve.addEventListener('change',function(){ vibrationEnabled=this.checked; localStorage.setItem('vibration-enabled',this.checked); });
+    if(ks) ks.addEventListener('change',function(){ keyboardSounds=this.checked; localStorage.setItem('keyboard-sounds',this.checked); });
+    if(as) as.addEventListener('change',function(){ autoScramble=this.checked; localStorage.setItem('auto-scramble',this.checked); });
+    if(ts) ts.addEventListener('input',function(){ timerSensitivity=parseInt(this.value); localStorage.setItem('timer-sensitivity',this.value); });
+    if(po) po.addEventListener('input',function(){ panelOpacity=parseInt(this.value); localStorage.setItem('panel-opacity',this.value); updatePanelOpacity(); });
+    if(fs) fs.addEventListener('input',function(){ fontSize=parseInt(this.value); localStorage.setItem('font-size',this.value); updateFontSize(); });
+    if(sl) sl.addEventListener('input',function(){ scrambleLength=parseInt(this.value); localStorage.setItem('scramble-length',this.value); });
+
+    document.querySelectorAll('.color-option').forEach(opt => {
+        opt.addEventListener('click', function() {
+            const tp = this.getAttribute('data-color') ? 'color' : this.getAttribute('data-accent') ? 'accent' : 'timer';
+            if(tp==='color') { primaryColor=this.getAttribute('data-color'); localStorage.setItem('primary-color',primaryColor); }
+            else if(tp==='accent') { accentColor=this.getAttribute('data-accent'); localStorage.setItem('accent-color',accentColor); }
+            else { timerColor=this.getAttribute('data-timer'); localStorage.setItem('timer-color',timerColor); }
+            this.parentElement.querySelectorAll('.color-option').forEach(o=>o.classList.remove('selected'));
+            this.classList.add('selected');
+            updateColors();
+        });
+    });
+
+    document.getElementById('export-data').addEventListener('click', exportData);
+    document.getElementById('reset-settings').addEventListener('click', resetSettings);
+    document.getElementById('logout-btn-user').addEventListener('click', function(e){ e.preventDefault(); logout(); });
+
+    // ── THEME / COLORS / OPACITY / FONT ──
+    function applyTheme() {
+        if (theme==='light') {
+            document.documentElement.style.setProperty('--panel-bg','rgba(241,245,249,0.95)');
+            document.documentElement.style.setProperty('--secondary-color','#e2e8f0');
+            document.documentElement.style.setProperty('--text-color','#0f172a');
+            document.body.style.background='linear-gradient(135deg,#f1f5f9 0%,#e2e8f0 100%)';
+        } else {
+            document.documentElement.style.setProperty('--panel-bg','rgba(15,23,42,0.85)');
+            document.documentElement.style.setProperty('--secondary-color','#1e293b');
+            document.documentElement.style.setProperty('--text-color','#ffffff');
+            document.body.style.background='linear-gradient(135deg,#0f172a 0%,#1e293b 100%)';
+        }
+    }
+
+    function updateColors() {
+        document.documentElement.style.setProperty('--primary-color', primaryColor);
+        document.documentElement.style.setProperty('--accent-color', accentColor);
+        timerDisplay.style.color = timerColor;
+        document.querySelectorAll('.btn-primary').forEach(el => el.style.backgroundColor = primaryColor);
+    }
+
+    function updatePanelOpacity() {
+        const op = panelOpacity/100;
+        document.documentElement.style.setProperty('--panel-bg', `rgba(15,23,42,${op})`);
+    }
+
+    function updateFontSize() {
+        document.body.style.fontSize = `${fontSize}px`;
+    }
+
+    // ── FULLSCREEN ──
+    fullscreenBtn.addEventListener('click', () => {
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+        else document.exitFullscreen();
+    });
+    document.addEventListener('fullscreenchange', () => {
+        const full = !!document.fullscreenElement;
+        fullscreenIcon.className = full ? 'fas fa-compress' : 'fas fa-expand';
+        fullscreenIcon.style.fontSize='1rem';
+    });
+
+    // ── AUDIO & VIBRATION ──
+    function playSound(el) {
+        if (soundEnabled && el) { el.currentTime=0; el.play().catch(()=>{}); }
+    }
+    function vibrate(p) {
+        if (vibrationEnabled && 'vibrate' in navigator) { try { navigator.vibrate(p); } catch(e){} }
+    }
+
+    // ── NOTIFICATION ──
+    function showNotification(msg) {
+        const n = document.createElement('div');
+        n.className = 'notification';
+        n.innerHTML = `<i class="fas fa-check-circle"></i>${msg}`;
+        document.body.appendChild(n);
+        setTimeout(() => { n.style.opacity='0'; setTimeout(()=>n.remove(),400); }, 2800);
+    }
+
+    // ── EXPORT / RESET ──
+    function exportData() {
+        const data = { times, settings: { primaryColor,accentColor,timerColor,theme,inspectionTime,soundEnabled,vibrationEnabled,keyboardSounds,timerSensitivity,panelOpacity,fontSize,scrambleLength,autoScramble }, exportDate: new Date().toISOString(), version:'2.0' };
+        const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+        const url  = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href=url; a.download=`speedtimer-backup-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showNotification('Datos exportados correctamente');
+    }
+
+    function resetSettings() {
+        if (confirm('¿Restablecer toda la configuración a valores por defecto?')) { localStorage.clear(); location.reload(); }
+    }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpeedTimer — Estadísticas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --green: #10b981;
+            --yellow: #f59e0b;
+            --red: #ef4444;
+            --panel: rgba(15, 23, 42, 0.85);
+            --border: rgba(59, 130, 246, 0.25);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Space Mono', monospace;
+            background: #070d1a;
+            color: #e2e8f0;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Animated background grid */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(59,130,246,0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(59,130,246,0.04) 1px, transparent 1px);
+            background-size: 40px 40px;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            top: -40%;
+            left: -20%;
+            width: 70%;
+            height: 80%;
+            background: radial-gradient(ellipse, rgba(59,130,246,0.08) 0%, transparent 70%);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .page-wrapper {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* TOPBAR */
+        .topbar {
+            background: rgba(7, 13, 26, 0.9);
+            border-bottom: 1px solid var(--border);
+            backdrop-filter: blur(12px);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .logo-text {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 900;
+            background: linear-gradient(90deg, #3b82f6, #10b981);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .logo-icon {
+            width: 28px; height: 28px;
+            background: conic-gradient(#ff0000 0deg 90deg, #ffffff 90deg 180deg, #0000ff 180deg 270deg, #ffff00 270deg 360deg);
+            border: 2px solid #333;
+            border-radius: 4px;
+            transform: rotate(-15deg);
+            flex-shrink: 0;
+        }
+
+        /* PANEL */
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            backdrop-filter: blur(8px);
+        }
+
+        /* CATEGORY TABS */
+        .cat-tab {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.7rem;
+            padding: 0.4rem 0.85rem;
+            border-radius: 8px;
+            border: 1px solid rgba(59,130,246,0.2);
+            background: rgba(15,23,42,0.6);
+            color: #94a3b8;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .cat-tab:hover { border-color: rgba(59,130,246,0.5); color: #e2e8f0; }
+        .cat-tab.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+            box-shadow: 0 0 12px rgba(59,130,246,0.4);
+        }
+
+        /* STAT CARDS */
+        .stat-card {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.1rem 1.25rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: var(--card-accent, var(--primary));
+        }
+        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+
+        .stat-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.55rem;
+            font-weight: 700;
+            line-height: 1;
+            margin-top: 0.35rem;
+        }
+
+        /* MEDAL BADGES */
+        .medal-gold   { color: #fbbf24; text-shadow: 0 0 10px rgba(251,191,36,0.5); }
+        .medal-silver { color: #94a3b8; }
+        .medal-bronze { color: #b45309; }
+
+        /* CHART CONTAINER */
+        .chart-wrap { position: relative; }
+
+        /* TIME LIST */
+        .time-row {
+            display: grid;
+            grid-template-columns: 2rem 1fr 1fr 1fr;
+            gap: 0.5rem;
+            align-items: center;
+            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            transition: background 0.15s;
+        }
+        .time-row:hover { background: rgba(59,130,246,0.07); }
+        .time-row.is-pb { background: rgba(251,191,36,0.06); border-left: 2px solid #fbbf24; }
+
+        /* PROGRESS RING */
+        .ring-wrap { position: relative; display: inline-flex; align-items: center; justify-content: center; }
+        .ring-label { position: absolute; text-align: center; }
+
+        /* LOADING SPINNER */
+        .spinner {
+            width: 40px; height: 40px;
+            border: 3px solid rgba(59,130,246,0.2);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* SECTION TITLE */
+        .section-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.75rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #64748b;
+            margin-bottom: 0.85rem;
+        }
+
+        /* WEEKLY HEATMAP */
+        .heatmap-cell {
+            width: 14px; height: 14px;
+            border-radius: 3px;
+            background: rgba(59,130,246,0.07);
+            transition: background 0.2s;
+        }
+
+        /* SCROLL CUSTOM */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: rgba(15,23,42,0.5); }
+        ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 3px; }
+
+        /* FADE IN ANIMATIONS */
+        .fade-in { animation: fadeIn 0.4s ease both; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+        .stagger-1 { animation-delay: 0.05s; }
+        .stagger-2 { animation-delay: 0.1s; }
+        .stagger-3 { animation-delay: 0.15s; }
+        .stagger-4 { animation-delay: 0.2s; }
+        .stagger-5 { animation-delay: 0.25s; }
+        .stagger-6 { animation-delay: 0.3s; }
+
+        /* MOBILE */
+        @media (max-width: 640px) {
+            .stat-value { font-size: 1.1rem; }
+            .time-row { grid-template-columns: 1.5rem 1fr 1fr; font-size: 0.72rem; }
+            .time-row .col-scramble { display: none; }
+        }
+
+        /* EMPTY STATE */
+        .empty-state {
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; padding: 3rem 1rem; color: #475569;
+            gap: 0.75rem;
+        }
+
+        /* TREND BADGE */
+        .trend-up   { color: #10b981; }
+        .trend-down { color: #ef4444; }
+        .trend-flat { color: #64748b; }
+
+        /* NAV LINK */
+        .nav-link {
+            font-size: 0.8rem; color: #64748b;
+            transition: color 0.2s;
+            display: flex; align-items: center; gap: 0.4rem;
+        }
+        .nav-link:hover { color: #e2e8f0; }
+        .nav-link.active { color: var(--primary); }
+    </style>
+</head>
+<body>
+<div class="page-wrapper">
+
+    <!-- TOP BAR -->
+    <nav class="topbar px-4 py-3">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="logo-icon"></div>
+                <span class="logo-text text-xl">SpeedTimer</span>
+            </div>
+
+            <div class="flex items-center gap-5">
+                <a href="index.html" class="nav-link">
+                    <i class="fas fa-stopwatch"></i>
+                    <span class="hidden sm:inline">Timer</span>
+                </a>
+                <a href="stats.html" class="nav-link active">
+                    <i class="fas fa-chart-line"></i>
+                    <span class="hidden sm:inline">Estadísticas</span>
+                </a>
+                <a href="algoritmos.html" class="nav-link">
+                    <i class="fas fa-code"></i>
+                    <span class="hidden sm:inline">Algoritmos</span>
+                </a>
+                <div class="flex items-center gap-2 ml-2">
+                    <div class="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold" id="user-avatar">?</div>
+                    <span class="text-sm hidden sm:inline text-slate-300" id="username-display">—</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- MAIN -->
+    <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
+
+        <!-- HEADER ROW -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+                <h1 class="text-2xl font-bold" style="font-family:'Orbitron',sans-serif;">Estadísticas</h1>
+                <p class="text-slate-400 text-sm mt-1">Analiza tu progreso en todas las categorías</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <select id="period-select" class="bg-slate-800 border border-slate-600 text-sm rounded-lg px-3 py-2 text-slate-300 focus:outline-none focus:border-blue-500">
+                    <option value="all">Todo el tiempo</option>
+                    <option value="30" selected>Últimos 30 días</option>
+                    <option value="7">Última semana</option>
+                    <option value="today">Hoy</option>
+                </select>
+                <button id="refresh-btn" class="p-2 rounded-lg border border-slate-600 text-slate-400 hover:text-white hover:border-blue-500 transition">
+                    <i class="fas fa-sync-alt text-sm"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- CATEGORY TABS -->
+        <div class="overflow-x-auto pb-1">
+            <div class="flex gap-2 w-max" id="cat-tabs">
+                <button class="cat-tab active" data-cat="333">3×3×3</button>
+                <button class="cat-tab" data-cat="222">2×2×2</button>
+                <button class="cat-tab" data-cat="444">4×4×4</button>
+                <button class="cat-tab" data-cat="555">5×5×5</button>
+                <button class="cat-tab" data-cat="666">6×6×6</button>
+                <button class="cat-tab" data-cat="777">7×7×7</button>
+                <button class="cat-tab" data-cat="333oh">OH</button>
+                <button class="cat-tab" data-cat="333bf">BLD</button>
+                <button class="cat-tab" data-cat="minx">Megaminx</button>
+                <button class="cat-tab" data-cat="pyram">Pyraminx</button>
+                <button class="cat-tab" data-cat="skewb">Skewb</button>
+                <button class="cat-tab" data-cat="sq1">Square-1</button>
+                <button class="cat-tab" data-cat="clock">Clock</button>
+            </div>
+        </div>
+
+        <!-- LOADING STATE -->
+        <div id="loading-state" class="flex justify-center py-16">
+            <div class="text-center space-y-3">
+                <div class="spinner mx-auto"></div>
+                <p class="text-slate-500 text-sm">Cargando estadísticas…</p>
+            </div>
+        </div>
+
+        <!-- CONTENT (hidden while loading) -->
+        <div id="stats-content" class="hidden space-y-6">
+
+            <!-- ROW 1: KEY STATS -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div class="stat-card fade-in stagger-1" style="--card-accent:#fbbf24">
+                    <div class="text-xs text-slate-400 flex items-center gap-1.5">
+                        <i class="fas fa-trophy text-yellow-400"></i> Mejor tiempo (PB)
+                    </div>
+                    <div class="stat-value medal-gold" id="s-pb">—</div>
+                    <div class="text-xs text-slate-500 mt-1" id="s-pb-date">—</div>
+                </div>
+                <div class="stat-card fade-in stagger-2" style="--card-accent:#3b82f6">
+                    <div class="text-xs text-slate-400 flex items-center gap-1.5">
+                        <i class="fas fa-calculator text-blue-400"></i> Promedio global
+                    </div>
+                    <div class="stat-value text-blue-400" id="s-avg">—</div>
+                    <div class="text-xs text-slate-500 mt-1" id="s-total-solves">— solves</div>
+                </div>
+                <div class="stat-card fade-in stagger-3" style="--card-accent:#10b981">
+                    <div class="text-xs text-slate-400 flex items-center gap-1.5">
+                        <i class="fas fa-list text-green-400"></i> Ao5 / Ao12
+                    </div>
+                    <div class="stat-value text-green-400" id="s-ao5">—</div>
+                    <div class="text-xs text-slate-500 mt-1" id="s-ao12">Ao12: —</div>
+                </div>
+                <div class="stat-card fade-in stagger-4" style="--card-accent:#8b5cf6">
+                    <div class="text-xs text-slate-400 flex items-center gap-1.5">
+                        <i class="fas fa-fire text-purple-400"></i> Mejor semana
+                    </div>
+                    <div class="stat-value text-purple-400" id="s-best-week">—</div>
+                    <div class="text-xs text-slate-500 mt-1" id="s-best-week-label">— solves esa semana</div>
+                </div>
+            </div>
+
+            <!-- ROW 2: SECONDARY STATS -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div class="stat-card fade-in stagger-1" style="--card-accent:#f59e0b">
+                    <div class="text-xs text-slate-400"><i class="fas fa-star mr-1 text-yellow-500"></i>Mejor hoy</div>
+                    <div class="stat-value text-yellow-400 text-xl" id="s-today-best">—</div>
+                </div>
+                <div class="stat-card fade-in stagger-2" style="--card-accent:#06b6d4">
+                    <div class="text-xs text-slate-400"><i class="fas fa-clock mr-1 text-cyan-400"></i>Ao50 / Ao100</div>
+                    <div class="stat-value text-cyan-400 text-xl" id="s-ao50">—</div>
+                    <div class="text-xs text-slate-500 mt-1" id="s-ao100">Ao100: —</div>
+                </div>
+                <div class="stat-card fade-in stagger-3" style="--card-accent:#ef4444">
+                    <div class="text-xs text-slate-400"><i class="fas fa-ban mr-1 text-red-400"></i>DNFs / +2s</div>
+                    <div class="stat-value text-red-400 text-xl" id="s-dnf">0</div>
+                    <div class="text-xs text-slate-500 mt-1" id="s-plus2">+2: 0</div>
+                </div>
+                <div class="stat-card fade-in stagger-4" style="--card-accent:#10b981">
+                    <div class="text-xs text-slate-400"><i class="fas fa-arrow-trend-down mr-1 text-green-400"></i>Desv. estándar</div>
+                    <div class="stat-value text-green-400 text-xl" id="s-stddev">—</div>
+                </div>
+            </div>
+
+            <!-- ROW 3: CHART + TOP 10 -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+                <!-- PROGRESS CHART (2/3 width) -->
+                <div class="panel p-4 lg:col-span-2 fade-in stagger-1">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="section-title mb-0">Progresión de tiempos</div>
+                        <div class="flex gap-2">
+                            <button class="chart-type-btn active text-xs px-2 py-1 rounded border border-blue-500 text-blue-400" data-type="line">Línea</button>
+                            <button class="chart-type-btn text-xs px-2 py-1 rounded border border-slate-600 text-slate-400" data-type="bar">Barras</button>
+                            <button class="chart-type-btn text-xs px-2 py-1 rounded border border-slate-600 text-slate-400" data-type="scatter">Puntos</button>
+                        </div>
+                    </div>
+                    <div class="chart-wrap" style="height:240px;">
+                        <canvas id="progress-chart"></canvas>
+                    </div>
+                </div>
+
+                <!-- TOP 10 -->
+                <div class="panel p-4 fade-in stagger-2">
+                    <div class="section-title">🏅 Top 10 mejores tiempos</div>
+                    <div id="top10-list" class="space-y-1 overflow-y-auto" style="max-height:280px;"></div>
+                </div>
+            </div>
+
+            <!-- ROW 4: WEEKLY HEATMAP + DISTRIBUTION -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+                <!-- ACTIVITY HEATMAP -->
+                <div class="panel p-4 fade-in stagger-1">
+                    <div class="section-title">Actividad semanal (últimas 16 semanas)</div>
+                    <div id="heatmap-container" class="space-y-1.5"></div>
+                    <div class="flex items-center gap-1.5 mt-3">
+                        <span class="text-xs text-slate-500">Menos</span>
+                        <div class="heatmap-cell" style="background:rgba(59,130,246,0.08)"></div>
+                        <div class="heatmap-cell" style="background:rgba(59,130,246,0.2)"></div>
+                        <div class="heatmap-cell" style="background:rgba(59,130,246,0.45)"></div>
+                        <div class="heatmap-cell" style="background:rgba(59,130,246,0.7)"></div>
+                        <div class="heatmap-cell" style="background:#3b82f6"></div>
+                        <span class="text-xs text-slate-500">Más</span>
+                    </div>
+                </div>
+
+                <!-- TIME DISTRIBUTION BAR -->
+                <div class="panel p-4 fade-in stagger-2">
+                    <div class="section-title">Distribución de tiempos</div>
+                    <div class="chart-wrap" style="height:200px;">
+                        <canvas id="dist-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ROW 5: RECENT SOLVES TABLE -->
+            <div class="panel p-4 fade-in">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="section-title mb-0">Últimos solves</div>
+                    <span class="text-xs text-slate-500" id="solve-count-label"></span>
+                </div>
+                <!-- Header -->
+                <div class="time-row text-xs text-slate-500 pb-1 border-b border-slate-700 mb-1">
+                    <span>#</span>
+                    <span>Tiempo</span>
+                    <span>Fecha</span>
+                    <span class="col-scramble">Scramble</span>
+                </div>
+                <div id="times-table" class="space-y-0.5 overflow-y-auto" style="max-height:320px;"></div>
+            </div>
+
+        </div><!-- /stats-content -->
+
+        <!-- EMPTY STATE (shown if no times) -->
+        <div id="empty-state" class="hidden panel">
+            <div class="empty-state">
+                <i class="fas fa-cube text-5xl text-slate-700"></i>
+                <p class="text-lg font-semibold text-slate-500">Sin tiempos registrados</p>
+                <p class="text-sm text-slate-600">Completa algunos solves en esta categoría para ver tus estadísticas.</p>
+                <a href="index.html" class="mt-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition">
+                    <i class="fas fa-stopwatch mr-2"></i>Ir al Timer
+                </a>
+            </div>
+        </div>
+
+    </main>
+</div><!-- /page-wrapper -->
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+const CATEGORIES = {
+    '333':'3×3×3','222':'2×2×2','444':'4×4×4','555':'5×5×5','666':'6×6×6','777':'7×7×7',
+    '333oh':'3×3 OH','333bf':'3×3 BLD','333fm':'3×3 FM','333mbf':'MBLD',
+    'minx':'Megaminx','pyram':'Pyraminx','skewb':'Skewb','sq1':'Square-1',
+    'clock':'Clock','444bf':'4×4 BLD','555bf':'5×5 BLD'
+};
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let allTimes = [];          // raw times from DB for current category
+let currentCat = '333';
+let currentPeriod = '30';   // days, 'today', or 'all'
+let progressChart = null;
+let distChart = null;
+let currentChartType = 'line';
+
+// ─── UTILS ────────────────────────────────────────────────────────────────────
+function fmt(seconds) {
+    if (seconds === null || isNaN(seconds)) return '—';
+    if (seconds === Infinity) return 'DNF';
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return m > 0 ? `${m}:${s < 10 ? '0' : ''}${s.toFixed(2)}` : s.toFixed(2);
+}
+
+function effectiveTime(entry) {
+    if (entry.penalty === 'DNF') return Infinity;
+    return entry.penalty === '+2' ? entry.time + 2 : entry.time;
+}
+
+function calcAvg(entries, n) {
+    if (entries.length < n) return null;
+    const subset = entries.slice(0, n).map(effectiveTime);
+    const dnfs = subset.filter(t => t === Infinity).length;
+    if (n <= 3 && dnfs >= 1) return Infinity;
+    if (n > 3  && dnfs >= 2) return Infinity;
+    const sorted = [...subset].sort((a, b) => a - b);
+    const trimmed = n >= 5 ? sorted.slice(1, -1) : sorted;
+    const sum = trimmed.reduce((a, b) => a + b, 0);
+    return sum === Infinity ? Infinity : sum / trimmed.length;
+}
+
+function stdDev(entries) {
+    const valid = entries.map(effectiveTime).filter(t => t !== Infinity);
+    if (valid.length < 2) return null;
+    const mean = valid.reduce((a,b)=>a+b,0) / valid.length;
+    const variance = valid.reduce((a,b)=>a+(b-mean)**2, 0) / valid.length;
+    return Math.sqrt(variance);
+}
+
+function weekKey(date) {
+    const d = new Date(date);
+    d.setHours(0,0,0,0);
+    d.setDate(d.getDate() - d.getDay()); // Sunday start
+    return d.toISOString().slice(0,10);
+}
+
+function filterByPeriod(times, period) {
+    if (period === 'all') return times;
+    const now = new Date();
+    let cutoff;
+    if (period === 'today') {
+        cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    } else {
+        cutoff = new Date(now - parseInt(period) * 86400000);
+    }
+    return times.filter(t => new Date(t.date) >= cutoff);
+}
+
+// ─── FETCH ────────────────────────────────────────────────────────────────────
+async function fetchTimes(category) {
+    const fd = new FormData();
+    fd.append('action', 'get_times');
+    fd.append('category', category);
+    fd.append('limit', 1000);
+    const r = await fetch('times.php', { method: 'POST', body: fd });
+    const data = await r.json();
+    if (!data.success) throw new Error(data.message);
+    return data.times.map(t => ({
+        id: t.id,
+        time: parseFloat(t.time_value),
+        scramble: t.scramble || '',
+        date: t.created_at,
+        category: t.category,
+        penalty: t.penalty === 'none' ? undefined : t.penalty
+    }));
+}
+
+async function checkAuth() {
+    const r = await fetch('check_auth.php');
+    const data = await r.json();
+    if (!data.authenticated) { window.location.href = 'login.html'; return false; }
+    document.getElementById('username-display').textContent = data.username;
+    const av = document.getElementById('user-avatar');
+    av.textContent = data.username.charAt(0).toUpperCase();
+    return true;
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function renderStats(times) {
+    const filtered = filterByPeriod(times, currentPeriod);
+
+    if (filtered.length === 0) {
+        document.getElementById('stats-content').classList.add('hidden');
+        document.getElementById('empty-state').classList.remove('hidden');
+        return;
+    }
+    document.getElementById('stats-content').classList.remove('hidden');
+    document.getElementById('empty-state').classList.add('hidden');
+
+    const validTimes = filtered.filter(t => t.penalty !== 'DNF').map(t => ({
+        ...t, eff: effectiveTime(t)
+    })).sort((a,b) => a.eff - b.eff);
+
+    // ── PB ──
+    const pb = validTimes.length ? validTimes[0] : null;
+    document.getElementById('s-pb').textContent = pb ? fmt(pb.eff) : '—';
+    document.getElementById('s-pb-date').textContent = pb ? new Date(pb.date).toLocaleDateString('es', {day:'numeric',month:'short',year:'numeric'}) : '—';
+
+    // ── AVG ──
+    const globalAvg = validTimes.length
+        ? validTimes.reduce((a,b) => a + b.eff, 0) / validTimes.length : null;
+    document.getElementById('s-avg').textContent = fmt(globalAvg);
+    document.getElementById('s-total-solves').textContent = `${filtered.length} solves`;
+
+    // ── AO5 / AO12 ──
+    const ao5  = calcAvg(filtered, 5);
+    const ao12 = calcAvg(filtered, 12);
+    const ao50 = calcAvg(filtered, 50);
+    const ao100= calcAvg(filtered, 100);
+    document.getElementById('s-ao5').textContent  = ao5  !== null ? fmt(ao5)  : '—';
+    document.getElementById('s-ao12').textContent = `Ao12: ${ao12  !== null ? fmt(ao12)  : '—'}`;
+    document.getElementById('s-ao50').textContent  = ao50  !== null ? fmt(ao50)  : '—';
+    document.getElementById('s-ao100').textContent = `Ao100: ${ao100 !== null ? fmt(ao100) : '—'}`;
+
+    // ── BEST WEEK ──
+    const byWeek = {};
+    filtered.forEach(t => {
+        const wk = weekKey(t.date);
+        if (!byWeek[wk]) byWeek[wk] = [];
+        byWeek[wk].push(t);
+    });
+    let bestWeekAvg = null, bestWeekLabel = '—';
+    Object.entries(byWeek).forEach(([wk, wkTimes]) => {
+        const vt = wkTimes.filter(t => t.penalty !== 'DNF');
+        if (!vt.length) return;
+        const avg = vt.reduce((a,b) => a + effectiveTime(b), 0) / vt.length;
+        if (bestWeekAvg === null || avg < bestWeekAvg) {
+            bestWeekAvg = avg;
+            const d = new Date(wk);
+            const d2 = new Date(d); d2.setDate(d2.getDate()+6);
+            bestWeekLabel = `${wkTimes.length} solves · ${d.toLocaleDateString('es',{day:'numeric',month:'short'})}–${d2.toLocaleDateString('es',{day:'numeric',month:'short'})}`;
+        }
+    });
+    document.getElementById('s-best-week').textContent = bestWeekAvg !== null ? fmt(bestWeekAvg) : '—';
+    document.getElementById('s-best-week-label').textContent = bestWeekLabel;
+
+    // ── TODAY BEST ──
+    const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+    const todayTimes = filtered.filter(t => new Date(t.date) >= todayStart && t.penalty !== 'DNF');
+    const todayBest = todayTimes.length ? Math.min(...todayTimes.map(effectiveTime)) : null;
+    document.getElementById('s-today-best').textContent = todayBest !== null ? fmt(todayBest) : '—';
+
+    // ── DNF / +2 ──
+    const dnfs  = filtered.filter(t => t.penalty === 'DNF').length;
+    const plus2 = filtered.filter(t => t.penalty === '+2').length;
+    document.getElementById('s-dnf').textContent  = dnfs;
+    document.getElementById('s-plus2').textContent = `+2: ${plus2}`;
+
+    // ── STD DEV ──
+    const sd = stdDev(filtered);
+    document.getElementById('s-stddev').textContent = sd !== null ? fmt(sd) : '—';
+
+    // ── TOP 10 ──
+    renderTop10(validTimes);
+
+    // ── CHART ──
+    renderProgressChart(filtered);
+
+    // ── DISTRIBUTION ──
+    renderDistChart(validTimes);
+
+    // ── HEATMAP ──
+    renderHeatmap(byWeek);
+
+    // ── TABLE ──
+    renderTimesTable(filtered);
+
+    document.getElementById('solve-count-label').textContent = `${filtered.length} solves mostrados`;
+}
+
+function renderTop10(sortedValid) {
+    const top = sortedValid.slice(0, 10);
+    const medals = ['🥇','🥈','🥉'];
+    const el = document.getElementById('top10-list');
+    if (!top.length) { el.innerHTML = '<div class="empty-state py-4"><i class="fas fa-inbox text-3xl"></i><p class="text-sm">Sin datos</p></div>'; return; }
+
+    el.innerHTML = top.map((t, i) => `
+        <div class="time-row">
+            <span class="text-slate-500 font-bold text-xs">${medals[i] || i+1}</span>
+            <span class="font-bold ${i===0?'medal-gold':i===1?'medal-silver':i===2?'medal-bronze':'text-slate-300'}" style="font-family:'Orbitron',sans-serif;font-size:0.85rem;">${fmt(t.eff)}</span>
+            <span class="text-slate-500 text-xs">${new Date(t.date).toLocaleDateString('es',{day:'2-digit',month:'short'})}</span>
+            <span class="text-slate-600 text-xs truncate col-scramble">${t.scramble.slice(0,22)}…</span>
+        </div>
+    `).join('');
+}
+
+function renderProgressChart(times) {
+    const ctx = document.getElementById('progress-chart').getContext('2d');
+    if (progressChart) { progressChart.destroy(); progressChart = null; }
+
+    // Sort ascending by date
+    const sorted = [...times].filter(t=>t.penalty!=='DNF').sort((a,b)=>new Date(a.date)-new Date(b.date));
+    if (!sorted.length) return;
+
+    const labels = sorted.map(t => new Date(t.date).toLocaleDateString('es',{day:'numeric',month:'short'}));
+    const data   = sorted.map(t => parseFloat(effectiveTime(t).toFixed(3)));
+
+    // Running average line (window=5)
+    const avgs = data.map((_, i) => {
+        const window = data.slice(Math.max(0, i-4), i+1);
+        return parseFloat((window.reduce((a,b)=>a+b,0)/window.length).toFixed(3));
+    });
+
+    const type = currentChartType === 'scatter' ? 'scatter' : currentChartType;
+
+    const datasets = [
+        {
+            label: 'Tiempo',
+            data: currentChartType === 'scatter'
+                ? sorted.map((t,i) => ({x:i, y:effectiveTime(t)}))
+                : data,
+            backgroundColor: 'rgba(59,130,246,0.15)',
+            borderColor: '#3b82f6',
+            borderWidth: 1.5,
+            pointBackgroundColor: '#3b82f6',
+            pointRadius: data.length > 80 ? 1 : 3,
+            pointHoverRadius: 5,
+            tension: 0.3,
+            fill: type === 'line',
+        }
+    ];
+    if (type !== 'bar') {
+        datasets.push({
+            label: 'Avg5 móvil',
+            data: type === 'scatter' ? avgs.map((v,i)=>({x:i,y:v})) : avgs,
+            borderColor: '#f59e0b',
+            borderWidth: 1.5,
+            borderDash: [4,3],
+            pointRadius: 0,
+            tension: 0.4,
+            fill: false,
+        });
+    }
+
+    progressChart = new Chart(ctx, {
+        type: type === 'scatter' ? 'scatter' : type,
+        data: { labels: type === 'scatter' ? undefined : labels, datasets },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            animation: { duration: 400 },
+            interaction: { intersect: false, mode: 'index' },
+            plugins: {
+                legend: { labels: { color: '#94a3b8', font: { size: 11 } } },
+                tooltip: {
+                    backgroundColor: 'rgba(7,13,26,0.95)',
+                    titleColor: '#e2e8f0',
+                    bodyColor: '#94a3b8',
+                    borderColor: 'rgba(59,130,246,0.3)',
+                    borderWidth: 1,
+                    callbacks: {
+                        label: ctx => {
+                            const v = typeof ctx.parsed.y !== 'undefined' ? ctx.parsed.y : ctx.parsed;
+                            return ` ${ctx.dataset.label}: ${fmt(v)}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { ticks: { color:'#475569', maxTicksLimit: 8, font:{size:10} }, grid: { color:'rgba(71,85,105,0.2)' } },
+                y: {
+                    ticks: { color:'#475569', font:{size:10}, callback: v => fmt(v) },
+                    grid: { color:'rgba(71,85,105,0.2)' }
+                }
+            }
+        }
+    });
+}
+
+function renderDistChart(sortedValid) {
+    const ctx = document.getElementById('dist-chart').getContext('2d');
+    if (distChart) { distChart.destroy(); distChart = null; }
+    if (!sortedValid.length) return;
+
+    const times = sortedValid.map(t=>t.eff);
+    const min = Math.min(...times), max = Math.max(...times);
+    const BINS = 10;
+    const step = (max - min) / BINS || 1;
+    const bins = Array(BINS).fill(0);
+    const binLabels = [];
+
+    for (let i = 0; i < BINS; i++) {
+        const lo = min + i*step, hi = lo + step;
+        binLabels.push(fmt(lo));
+        bins[i] = times.filter(t => t >= lo && t < hi + (i===BINS-1 ? 0.001 : 0)).length;
+    }
+
+    distChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: binLabels,
+            datasets: [{
+                label: 'Solves',
+                data: bins,
+                backgroundColor: bins.map((v, i) => {
+                    const idx = bins.indexOf(Math.max(...bins));
+                    return i === idx ? 'rgba(16,185,129,0.7)' : 'rgba(59,130,246,0.4)';
+                }),
+                borderColor: bins.map((v, i) => {
+                    const idx = bins.indexOf(Math.max(...bins));
+                    return i === idx ? '#10b981' : '#3b82f6';
+                }),
+                borderWidth: 1,
+                borderRadius: 4,
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            animation: { duration: 400 },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(7,13,26,0.95)',
+                    titleColor: '#e2e8f0',
+                    bodyColor: '#94a3b8',
+                    borderColor: 'rgba(59,130,246,0.3)',
+                    borderWidth: 1
+                }
+            },
+            scales: {
+                x: { ticks: { color:'#475569', font:{size:9}, maxRotation: 45 }, grid: { display:false } },
+                y: { ticks: { color:'#475569', font:{size:10} }, grid: { color:'rgba(71,85,105,0.2)' } }
+            }
+        }
+    });
+}
+
+function renderHeatmap(byWeek) {
+    const container = document.getElementById('heatmap-container');
+    const now = new Date();
+    const weeks = [];
+    // Build 16 week keys going back
+    for (let w = 15; w >= 0; w--) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - w*7);
+        weeks.push(weekKey(d));
+    }
+
+    const maxCount = Math.max(1, ...Object.values(byWeek).map(a=>a.length));
+    const dayNames = ['D','L','M','M','J','V','S'];
+
+    // Build grid: rows = 7 days, cols = 16 weeks
+    const grid = document.createElement('div');
+    grid.className = 'flex gap-1';
+
+    // Day labels
+    const dayCol = document.createElement('div');
+    dayCol.className = 'flex flex-col gap-1';
+    dayNames.forEach(d => {
+        const l = document.createElement('div');
+        l.className = 'text-slate-600 text-center';
+        l.style.cssText = 'font-size:9px;width:14px;height:14px;line-height:14px;';
+        l.textContent = d;
+        dayCol.appendChild(l);
+    });
+    grid.appendChild(dayCol);
+
+    weeks.forEach(wk => {
+        const col = document.createElement('div');
+        col.className = 'flex flex-col gap-1';
+
+        for (let day = 0; day < 7; day++) {
+            const d = new Date(wk);
+            d.setDate(d.getDate() + day);
+            const dayKey = d.toISOString().slice(0,10);
+
+            // Count solves on this specific day
+            const count = Object.entries(byWeek)
+                .filter(([wk2]) => wk2 === weekKey(d))
+                .flatMap(([,arr]) => arr)
+                .filter(t => t.date && t.date.slice(0,10) === dayKey).length;
+
+            const cell = document.createElement('div');
+            cell.className = 'heatmap-cell';
+            if (count > 0) {
+                const intensity = Math.min(1, count / (maxCount * 0.5));
+                cell.style.background = `rgba(59,130,246,${0.15 + intensity * 0.85})`;
+            }
+            if (count > 0) {
+                cell.title = `${d.toLocaleDateString('es',{weekday:'short',day:'numeric',month:'short'})}: ${count} solve${count>1?'s':''}`;
+            }
+            col.appendChild(cell);
+        }
+        grid.appendChild(col);
+    });
+
+    container.innerHTML = '';
+    container.appendChild(grid);
+
+    // Week labels below (every 4 weeks)
+    const wkLabels = document.createElement('div');
+    wkLabels.className = 'flex gap-1 mt-1 pl-4';
+    weeks.forEach((wk, i) => {
+        const l = document.createElement('div');
+        l.style.cssText = 'width:14px;font-size:8px;color:#475569;text-align:center;';
+        if (i % 4 === 0) {
+            const d = new Date(wk);
+            l.textContent = d.toLocaleDateString('es',{month:'short'});
+        }
+        wkLabels.appendChild(l);
+    });
+    container.appendChild(wkLabels);
+}
+
+function renderTimesTable(times) {
+    const el = document.getElementById('times-table');
+    if (!times.length) {
+        el.innerHTML = '<div class="empty-state py-4"><i class="fas fa-inbox text-3xl"></i></div>';
+        return;
+    }
+
+    // Sort by date desc (most recent first)
+    const sorted = [...times].sort((a,b) => new Date(b.date)-new Date(a.date));
+
+    // Find PB for each entry
+    let runningMin = Infinity;
+    // Actually we track PB going through ascending date order
+    const pbSet = new Set();
+    const ascending = [...sorted].reverse();
+    ascending.forEach(t => {
+        const eff = effectiveTime(t);
+        if (eff < runningMin) { runningMin = eff; pbSet.add(t.id); }
+    });
+
+    el.innerHTML = sorted.slice(0, 100).map((t, i) => {
+        const eff = effectiveTime(t);
+        const isPB = pbSet.has(t.id);
+        const timeStr = t.penalty === 'DNF'
+            ? '<span class="text-red-400">DNF</span>'
+            : `<span class="${isPB ? 'medal-gold' : 'text-slate-200'}" style="font-family:'Orbitron',sans-serif;font-size:0.8rem;">${fmt(eff)}${t.penalty==='+2'?' <span class="text-yellow-400 text-xs">+2</span>':''}</span>`;
+
+        return `<div class="time-row ${isPB ? 'is-pb' : ''}">
+            <span class="text-slate-600 text-xs">${i+1}</span>
+            <span>${timeStr}</span>
+            <span class="text-slate-500 text-xs">${new Date(t.date).toLocaleDateString('es',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</span>
+            <span class="text-slate-600 text-xs truncate col-scramble" title="${t.scramble}">${t.scramble ? t.scramble.slice(0,28)+'…' : '—'}</span>
+        </div>`;
+    }).join('');
+}
+
+// ─── CHART TYPE BUTTONS ───────────────────────────────────────────────────────
+document.querySelectorAll('.chart-type-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.chart-type-btn').forEach(b => {
+            b.classList.remove('active','border-blue-500','text-blue-400');
+            b.classList.add('border-slate-600','text-slate-400');
+        });
+        this.classList.add('active','border-blue-500','text-blue-400');
+        this.classList.remove('border-slate-600','text-slate-400');
+        currentChartType = this.dataset.type;
+        renderProgressChart(filterByPeriod(allTimes, currentPeriod));
+    });
+});
+
+// ─── LOAD DATA ────────────────────────────────────────────────────────────────
+async function loadCategory(cat) {
+    currentCat = cat;
+    document.getElementById('loading-state').classList.remove('hidden');
+    document.getElementById('stats-content').classList.add('hidden');
+    document.getElementById('empty-state').classList.add('hidden');
+
+    try {
+        allTimes = await fetchTimes(cat);
+        renderStats(allTimes);
+    } catch(e) {
+        console.error(e);
+        document.getElementById('loading-state').innerHTML = `
+            <div class="text-center text-red-400 py-12">
+                <i class="fas fa-exclamation-triangle text-3xl mb-3"></i>
+                <p>Error cargando datos: ${e.message}</p>
+            </div>`;
+        return;
+    }
+    document.getElementById('loading-state').classList.add('hidden');
+}
+
+// ─── TABS ─────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.cat-tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+        document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+        loadCategory(this.dataset.cat);
+    });
+});
+
+// ─── PERIOD SELECT ────────────────────────────────────────────────────────────
+document.getElementById('period-select').addEventListener('change', function() {
+    currentPeriod = this.value;
+    renderStats(allTimes);
+});
+
+// ─── REFRESH ─────────────────────────────────────────────────────────────────
+document.getElementById('refresh-btn').addEventListener('click', () => {
+    const icon = document.querySelector('#refresh-btn i');
+    icon.style.transition = 'transform 0.6s';
+    icon.style.transform = 'rotate(360deg)';
+    setTimeout(() => icon.style.transform = '', 600);
+    loadCategory(currentCat);
+});
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+(async () => {
+    const ok = await checkAuth();
+    if (ok) loadCategory('333');
+})();
+</script>
+</body>
+</html>

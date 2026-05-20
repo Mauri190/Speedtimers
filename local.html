@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpeedTimer Enhanced</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module" src="https://cdn.cubing.net/js/cubing/twisty"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0e17;
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        /* Contenedor principal */
+        .app-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #1e293b;
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #ef4444, #3b82f6, #10b981, #f59e0b);
+            border-radius: 8px;
+        }
+
+        .logo-text {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #60a5fa, #34d399);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .nav-btn {
+            background: #1e293b;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            color: #94a3b8;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover {
+            background: #334155;
+            color: #e2e8f0;
+        }
+
+        /* Grid principal - estructura tipo imagen */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 280px 1fr 280px;
+            gap: 20px;
+        }
+
+        /* Panel izquierdo - Estadísticas + Historial */
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Panel central - Scramble + Timer */
+        .center-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Panel derecho - Vista previa */
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Tarjetas */
+        .card {
+            background: #111827;
+            border-radius: 16px;
+            border: 1px solid #1f2937;
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid #1f2937;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #60a5fa;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-body {
+            padding: 16px;
+        }
+
+        /* Estadísticas */
+        .stats-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: #0f172a;
+            border-radius: 10px;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: #94a3b8;
+        }
+
+        .stat-value {
+            font-size: 0.9rem;
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+        }
+
+        .pb-star {
+            color: #f59e0b;
+            margin-left: 4px;
+        }
+
+        /* Historial */
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .clear-btn {
+            background: #7f1d1d;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 6px;
+            color: #fca5a5;
+            font-size: 0.7rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .clear-btn:hover {
+            background: #991b1b;
+            color: #fecaca;
+        }
+
+        .times-list {
+            max-height: 320px;
+            overflow-y: auto;
+        }
+
+        .time-entry {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            border-bottom: 1px solid #1f2937;
+            font-size: 0.85rem;
+        }
+
+        .time-entry:hover {
+            background: #1e293b;
+        }
+
+        .time-number {
+            color: #64748b;
+            width: 30px;
+        }
+
+        .time-value {
+            font-family: 'Courier New', monospace;
+        }
+
+        .time-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        .penalty-btn {
+            background: #1e293b;
+            border: none;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            color: #94a3b8;
+        }
+
+        .penalty-btn.active {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .delete-btn {
+            background: none;
+            border: none;
+            color: #ef4444;
+            cursor: pointer;
+            padding: 2px 6px;
+        }
+
+        /* Scramble */
+        .scramble-text {
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            background: #0f172a;
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 3px solid #3b82f6;
+            line-height: 1.5;
+            word-break: break-word;
+        }
+
+        .scramble-badge {
+            display: inline-block;
+            background: #1e293b;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.65rem;
+            color: #60a5fa;
+        }
+
+        /* Timer */
+        .timer-area {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .timer-display {
+            font-family: 'Courier New', monospace;
+            font-size: 5rem;
+            font-weight: bold;
+            color: #10b981;
+            margin-bottom: 16px;
+        }
+
+        .inspection-display {
+            font-family: 'Courier New', monospace;
+            font-size: 1.5rem;
+            color: #f59e0b;
+            margin-bottom: 8px;
+        }
+
+        .timer-touch-area {
+            background: #1e293b;
+            border: 1px solid #3b82f6;
+            border-radius: 12px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .timer-touch-area.ready {
+            background: rgba(16, 185, 129, 0.1);
+            border-color: #10b981;
+            animation: pulse 1.5s infinite;
+        }
+
+        .timer-instruction {
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+            50% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+        }
+
+        /* Vista previa */
+        .preview-container {
+            min-height: 240px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Dropdowns */
+        .dropdown {
+            position: relative;
+        }
+
+        .dropdown-content {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            min-width: 180px;
+            z-index: 100;
+            display: none;
+        }
+
+        .dropdown-content.show {
+            display: block;
+        }
+
+        .dropdown-content a, .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            color: #cbd5e1;
+            text-decoration: none;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+
+        .dropdown-content a:hover, .dropdown-item:hover {
+            background: #334155;
+        }
+
+        .active-category {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .separator {
+            border-top: 1px solid #334155;
+            margin: 4px 0;
+        }
+
+        /* Modal scramble */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+        }
+
+        .modal-content {
+            background: #1e293b;
+            border-radius: 16px;
+            max-width: 420px;
+            width: 90%;
+            padding: 20px;
+            border: 1px solid #334155;
+        }
+
+        /* Settings panel */
+        .settings-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 300;
+            display: none;
+        }
+
+        .settings-panel {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 380px;
+            height: 100vh;
+            background: #0f172a;
+            border-left: 1px solid #334155;
+            z-index: 301;
+            transition: right 0.3s;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .settings-panel.open {
+            right: 0;
+        }
+
+        .settings-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .color-option {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+
+        .color-option.selected {
+            border-color: white;
+        }
+
+        /* Notificaciones */
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #10b981;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            z-index: 400;
+        }
+
+        /* PB Animation */
+        .pb-alert {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: black;
+            padding: 10px 24px;
+            border-radius: 40px;
+            font-weight: bold;
+            z-index: 400;
+            animation: pbBounce 0.5s ease;
+        }
+
+        @keyframes pbBounce {
+            0% { transform: translateX(-50%) scale(0.6); opacity: 0; }
+            40% { transform: translateX(-50%) scale(1.1); }
+            100% { transform: translateX(-50%) scale(1); }
+        }
+
+        /* Scroll */
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3b82f6;
+            border-radius: 3px;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+            .right-panel {
+                display: none;
+            }
+            .timer-display {
+                font-size: 3rem;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <!-- Header -->
+    <div class="header">
+        <div class="logo-area">
+            <div class="logo-icon"></div>
+            <span class="logo-text">SpeedTimer</span>
+        </div>
+        <div class="nav-buttons">
+            <button id="category-nav-btn" class="nav-btn">
+                <i class="fas fa-cube"></i>
+                <span id="current-category-display">3x3x3</span>
+                <i class="fas fa-chevron-down"></i>
+            </button>
+            <button id="algorithms-nav-btn" class="nav-btn">
+                <i class="fas fa-code"></i> Algoritmos
+            </button>
+            <button id="training-nav-btn" class="nav-btn">
+                <i class="fas fa-tachometer-alt"></i> Entrenamiento
+                <i class="fas fa-chevron-down"></i>
+            </button>
+            <button id="settings-nav-btn" class="nav-btn">
+                <i class="fas fa-cog"></i>
+            </button>
+            <button id="user-nav-btn" class="nav-btn">
+                <i class="fas fa-user-circle"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Grid principal -->
+    <div class="main-grid">
+        <!-- Columna izquierda: Estadísticas + Historial -->
+        <div class="left-panel">
+            <!-- Estadísticas -->
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-chart-bar"></i> Estadísticas
+                </div>
+                <div class="card-body">
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-label">Actual</span>
+                            <span class="stat-value" id="current-time">-</span>
+                        </div>
+                        <div class="stat-item" id="stat-best">
+                            <span class="stat-label">Mejor (PB)</span>
+                            <span class="stat-value">
+                                <span id="best-time">-</span>
+                                <span class="pb-star" id="best-star" style="display:none;">★</span>
+                            </span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Avg de 5</span>
+                            <span class="stat-value" id="avg5-time">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Avg de 12</span>
+                            <span class="stat-value" id="avg12-time">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Historial -->
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-history"></i> Historial
+                </div>
+                <div class="card-body">
+                    <div class="history-header">
+                        <span></span>
+                        <button id="clear-times" class="clear-btn">
+                            <i class="fas fa-trash"></i> Borrar todo
+                        </button>
+                    </div>
+                    <div class="times-list" id="times-list">
+                        <div style="text-align:center;color:#64748b;padding:20px;">Cargando tiempos...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Columna central: Scramble + Timer -->
+        <div class="center-panel">
+            <!-- Scramble -->
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-random"></i> Scramble Actual
+                    <span class="scramble-badge" id="current-category">3x3x3</span>
+                </div>
+                <div class="card-body">
+                    <div class="scramble-text" id="scramble"></div>
+                    <div style="display:none;" id="scramble-right"></div>
+                </div>
+            </div>
+
+            <!-- Timer -->
+            <div class="card">
+                <div class="timer-area">
+                    <div class="inspection-display" id="inspection-timer" style="display:none;">15</div>
+                    <div class="timer-display" id="timer">0.00</div>
+                    <div class="timer-touch-area" id="timer-touch-area">
+                        <div class="timer-instruction" id="timer-instruction">
+                            Presiona espacio o toca aquí para comenzar
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Columna derecha: Vista previa -->
+        <div class="right-panel">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-eye"></i> Vista Previa (2D)
+                    <span class="scramble-badge" id="current-category-right">3x3x3</span>
+                </div>
+                <div class="card-body">
+                    <div class="preview-container" id="scramble-visual-container">
+                        <twisty-player id="scramble-player"
+                            puzzle="3x3x3"
+                            visualization="2D"
+                            hint-facelets="none"
+                            control-panel="none"
+                            background="none"
+                            style="width:100%;height:220px;">
+                        </twisty-player>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Dropdowns -->
+<div id="category-dropdown" class="dropdown-content">
+    <a href="#" data-category="333"><i class="fas fa-cube"></i>3x3x3</a>
+    <a href="#" data-category="222"><i class="fas fa-th"></i>2x2x2</a>
+    <a href="#" data-category="444"><i class="fas fa-th-large"></i>4x4x4</a>
+    <a href="#" data-category="555"><i class="fas fa-th-large"></i>5x5x5</a>
+    <div class="separator"></div>
+    <a href="#" data-category="333oh"><i class="fas fa-hand-paper"></i>3x3x3 OH</a>
+    <a href="#" data-category="333bf"><i class="fas fa-blind"></i>3x3x3 BLD</a>
+    <div class="separator"></div>
+    <a href="#" data-category="pyram"><i class="fas fa-play"></i>Pyraminx</a>
+    <a href="#" data-category="skewb"><i class="fas fa-gem"></i>Skewb</a>
+    <a href="#" data-category="sq1"><i class="fas fa-square"></i>Square-1</a>
+</div>
+
+<div id="training-dropdown" class="dropdown-content">
+    <a href="#">3x3x3</a>
+    <a href="#">2x2x2</a>
+    <a href="#">4x4x4</a>
+    <div class="separator"></div>
+    <a href="#">3x3x3 OH</a>
+    <a href="#">3x3x3 BLD</a>
+</div>
+
+<div id="user-dropdown" class="dropdown-content">
+    <div class="user-info" style="padding:10px 14px;border-bottom:1px solid #334155;">
+        <div style="font-weight:600;" id="current-username">Usuario</div>
+        <div style="font-size:0.7rem;color:#94a3b8;" id="user-stats">0 solves</div>
+    </div>
+    <div class="separator"></div>
+    <a href="#" id="my-stats-btn"><i class="fas fa-chart-line"></i>Mis Estadísticas</a>
+    <div class="separator"></div>
+    <a href="#" id="logout-btn" style="color:#f87171;"><i class="fas fa-sign-out-alt"></i>Cerrar Sesión</a>
+</div>
+
+<!-- Settings -->
+<div class="settings-overlay" id="settings-overlay"></div>
+<div class="settings-panel" id="settings-panel">
+    <div class="settings-header">
+        <h3>Configuración</h3>
+        <button id="close-settings" style="background:none;border:none;color:#94a3b8;cursor:pointer;">✕</button>
+    </div>
+    <div style="margin-bottom:16px;">
+        <label style="font-size:0.8rem;">Color primario</label>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+            <div class="color-option" data-color="#3b82f6" style="background:#3b82f6;"></div>
+            <div class="color-option" data-color="#10b981" style="background:#10b981;"></div>
+            <div class="color-option" data-color="#f59e0b" style="background:#f59e0b;"></div>
+            <div class="color-option" data-color="#ef4444" style="background:#ef4444;"></div>
+        </div>
+    </div>
+    <button id="export-data" style="width:100%;padding:8px;background:#3b82f6;border:none;border-radius:8px;color:white;cursor:pointer;">Exportar Datos</button>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Elementos DOM
+    const timerDisplay = document.getElementById('timer');
+    const timerTouchArea = document.getElementById('timer-touch-area');
+    const timerInstruction = document.getElementById('timer-instruction');
+    const scrambleDisplay = document.getElementById('scramble');
+    const timesList = document.getElementById('times-list');
+    const currentTimeDisplay = document.getElementById('current-time');
+    const bestTimeDisplay = document.getElementById('best-time');
+    const avg5TimeDisplay = document.getElementById('avg5-time');
+    const avg12TimeDisplay = document.getElementById('avg12-time');
+    const currentCategorySpan = document.getElementById('current-category');
+    const currentCategoryDisplay = document.getElementById('current-category-display');
+    const currentCategoryRight = document.getElementById('current-category-right');
+    const clearTimesBtn = document.getElementById('clear-times');
+    const settingsPanel = document.getElementById('settings-panel');
+    const settingsOverlay = document.getElementById('settings-overlay');
+
+    // Variables de estado
+    let running = false;
+    let ready = false;
+    let inspecting = false;
+    let holdingTimer = false;
+    let startTime = 0;
+    let timerInterval = null;
+    let inspectionInterval = null;
+    let times = [];
+    let currentCategory = '333';
+    let currentScramble = '';
+    let inspectionTime = '0';
+
+    // Helper: formateo
+    function formatTimeDisplay(t) {
+        if (isNaN(t) || t === null) return '-';
+        if (t === Infinity) return 'DNF';
+        const m = Math.floor(t / 60);
+        const s = t % 60;
+        if (m > 0) return `${m}:${s < 10 ? '0' : ''}${s.toFixed(2)}`;
+        return s.toFixed(2);
+    }
+
+    function formatTimeWithPenalty(t, penalty) {
+        if (penalty === 'DNF') return 'DNF';
+        const val = penalty === '+2' ? t + 2 : t;
+        return formatTimeDisplay(val) + (penalty === '+2' ? '+' : '');
+    }
+
+    // Generador de scrambles
+    function gen3x3() {
+        const faces = ['U', 'D', 'F', 'B', 'R', 'L'];
+        const mods = ['', "'", '2'];
+        const moves = [];
+        let last = '', secLast = '';
+        for (let i = 0; i < 20; i++) {
+            let f;
+            do { f = faces[Math.floor(Math.random() * faces.length)]; }
+            while (f === last || (f === secLast && ({U:'D',D:'U',F:'B',B:'F',R:'L',L:'R'})[f] === last));
+            moves.push(f + mods[Math.floor(Math.random() * 3)]);
+            secLast = last;
+            last = f;
+        }
+        return moves.join(' ');
+    }
+
+    function generateScramble(cat) {
+        if (cat === '333' || cat === '333oh' || cat === '333bf') return gen3x3();
+        if (cat === '222') return gen3x3().split(' ').slice(0, 12).join(' ');
+        return gen3x3();
+    }
+
+    function updateScrambleDisplay() {
+        scrambleDisplay.textContent = currentScramble;
+        const player = document.getElementById('scramble-player');
+        if (player) {
+            player.setAttribute('alg', currentScramble);
+        }
+    }
+
+    function generateNewScramble() {
+        currentScramble = generateScramble(currentCategory);
+        updateScrambleDisplay();
+        resetTimer();
+    }
+
+    // Timer
+    function resetTimer() {
+        running = false;
+        ready = false;
+        inspecting = false;
+        holdingTimer = false;
+        if (timerInterval) clearInterval(timerInterval);
+        if (inspectionInterval) clearInterval(inspectionInterval);
+        timerDisplay.textContent = '0.00';
+        timerDisplay.style.color = '#10b981';
+        timerTouchArea.classList.remove('ready');
+        document.getElementById('inspection-timer').style.display = 'none';
+        timerInstruction.textContent = 'Presiona espacio o toca aquí para comenzar';
+    }
+
+    function startTimer() {
+        if (!ready) return;
+        running = true;
+        ready = false;
+        startTime = Date.now();
+        timerInterval = setInterval(() => {
+            timerDisplay.textContent = formatTimeDisplay((Date.now() - startTime) / 1000);
+        }, 10);
+        timerTouchArea.classList.remove('ready');
+        timerInstruction.textContent = 'Toca o presiona cualquier tecla para detener';
+    }
+
+    function stopTimer() {
+        if (!running) return;
+        running = false;
+        clearInterval(timerInterval);
+        const elapsed = (Date.now() - startTime) / 1000;
+        const entry = {
+            time: elapsed,
+            scramble: currentScramble,
+            date: new Date().toISOString(),
+            category: currentCategory,
+            penalty: undefined
+        };
+        times.unshift(entry);
+        updateStats();
+        renderTimesList();
+        timerDisplay.textContent = formatTimeWithPenalty(elapsed, undefined);
+        timerInstruction.textContent = 'Presiona espacio o toca aquí para comenzar';
+        generateNewScramble();
+    }
+
+    function prepareTimer() {
+        ready = true;
+        timerDisplay.textContent = '0.00';
+        timerTouchArea.classList.add('ready');
+        timerInstruction.textContent = 'Suelta para iniciar';
+    }
+
+    // Eventos
+    function handleKeyDown(e) {
+        if (e.code === 'Space') {
+            e.preventDefault();
+            if (holdingTimer) return;
+            if (!running && !ready && !inspecting) {
+                prepareTimer();
+            }
+            holdingTimer = true;
+        }
+    }
+
+    function handleKeyUp(e) {
+        if (e.code === 'Space') {
+            e.preventDefault();
+            if (!holdingTimer && !running && !ready && !inspecting) {
+                holdingTimer = false;
+                return;
+            }
+            if (running) stopTimer();
+            else if (ready && !inspecting) startTimer();
+            holdingTimer = false;
+        }
+    }
+
+    function handleTouchStart(e) {
+        e.preventDefault();
+        if (holdingTimer) return;
+        if (!running && !ready && !inspecting) {
+            prepareTimer();
+        }
+        holdingTimer = true;
+    }
+
+    function handleTouchEnd(e) {
+        e.preventDefault();
+        if (!holdingTimer && !running && !inspecting && !ready) {
+            holdingTimer = false;
+            return;
+        }
+        if (running) stopTimer();
+        else if (ready && !inspecting) startTimer();
+        holdingTimer = false;
+    }
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keyup', handleKeyUp);
+    timerTouchArea.addEventListener('mousedown', handleTouchStart);
+    timerTouchArea.addEventListener('touchstart', handleTouchStart);
+    timerTouchArea.addEventListener('mouseup', handleTouchEnd);
+    timerTouchArea.addEventListener('touchend', handleTouchEnd);
+
+    // Estadísticas
+    function updateStats() {
+        const catTimes = times.filter(t => t.category === currentCategory);
+        if (catTimes.length === 0) {
+            currentTimeDisplay.textContent = '-';
+            bestTimeDisplay.textContent = '-';
+            avg5TimeDisplay.textContent = '-';
+            avg12TimeDisplay.textContent = '-';
+            return;
+        }
+        const cur = catTimes[0];
+        currentTimeDisplay.textContent = formatTimeWithPenalty(cur.time, cur.penalty);
+        const valid = catTimes.filter(t => t.penalty !== 'DNF').map(t => t.penalty === '+2' ? t.time + 2 : t.time);
+        if (valid.length) {
+            const best = Math.min(...valid);
+            bestTimeDisplay.textContent = formatTimeDisplay(best);
+            if (best === (cur.penalty === '+2' ? cur.time + 2 : cur.time)) {
+                document.getElementById('best-star').style.display = 'inline';
+            } else {
+                document.getElementById('best-star').style.display = 'none';
+            }
+        }
+        // Averages
+        const timesVal = catTimes.slice(0, 5).map(t => t.penalty === 'DNF' ? Infinity : (t.penalty === '+2' ? t.time + 2 : t.time));
+        const valid5 = timesVal.filter(t => t !== Infinity);
+        if (valid5.length >= 3) {
+            const sorted = [...timesVal].sort((a,b)=>a-b);
+            const trimmed = sorted.slice(1, -1);
+            const avg = trimmed.reduce((a,b)=>a+b,0) / trimmed.length;
+            avg5TimeDisplay.textContent = formatTimeDisplay(avg);
+        } else {
+            avg5TimeDisplay.textContent = '-';
+        }
+    }
+
+    function renderTimesList() {
+        const catTimes = times.filter(t => t.category === currentCategory);
+        if (!catTimes.length) {
+            timesList.innerHTML = '<div style="text-align:center;color:#64748b;padding:20px;">No hay tiempos</div>';
+            return;
+        }
+        timesList.innerHTML = catTimes.map((entry, i) => `
+            <div class="time-entry">
+                <div><span class="time-number">${i+1}.</span> <span class="time-value">${formatTimeWithPenalty(entry.time, entry.penalty)}</span></div>
+                <div class="time-actions">
+                    <button class="penalty-btn" data-penalty="ok">OK</button>
+                    <button class="penalty-btn" data-penalty="+2">+2</button>
+                    <button class="penalty-btn" data-penalty="DNF">DNF</button>
+                    <button class="delete-btn"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function deleteTimeEntry(idx) {
+        const catTimes = times.filter(t => t.category === currentCategory);
+        const entry = catTimes[idx];
+        const index = times.findIndex(t => t === entry);
+        if (index !== -1) {
+            times.splice(index, 1);
+            updateStats();
+            renderTimesList();
+        }
+    }
+
+    timesList.addEventListener('click', (e) => {
+        const btn = e.target.closest('.penalty-btn');
+        const del = e.target.closest('.delete-btn');
+        const row = e.target.closest('.time-entry');
+        if (!row) return;
+        const idx = Array.from(timesList.children).indexOf(row);
+        if (del) deleteTimeEntry(idx);
+    });
+
+    clearTimesBtn.addEventListener('click', () => {
+        if (confirm('¿Borrar todos los tiempos?')) {
+            times = times.filter(t => t.category !== currentCategory);
+            updateStats();
+            renderTimesList();
+        }
+    });
+
+    // Categoría
+    function getCategoryName(code) {
+        const names = {
+            '333': '3x3x3', '222': '2x2x2', '444': '4x4x4', '555': '5x5x5',
+            '333oh': '3x3x3 OH', '333bf': '3x3x3 BLD', 'pyram': 'Pyraminx', 'skewb': 'Skewb', 'sq1': 'Square-1'
+        };
+        return names[code] || code;
+    }
+
+    function updateCategory(cat) {
+        currentCategory = cat;
+        const name = getCategoryName(cat);
+        currentCategorySpan.textContent = name;
+        currentCategoryDisplay.textContent = name;
+        currentCategoryRight.textContent = name;
+        generateNewScramble();
+        updateStats();
+        renderTimesList();
+    }
+
+    // Dropdowns
+    const categoryDropdown = document.getElementById('category-dropdown');
+    const trainingDropdown = document.getElementById('training-dropdown');
+    const userDropdown = document.getElementById('user-dropdown');
+
+    document.getElementById('category-nav-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        categoryDropdown.classList.toggle('show');
+        trainingDropdown.classList.remove('show');
+        userDropdown.classList.remove('show');
+    });
+    document.getElementById('training-nav-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        trainingDropdown.classList.toggle('show');
+        categoryDropdown.classList.remove('show');
+        userDropdown.classList.remove('show');
+    });
+    document.getElementById('user-nav-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        userDropdown.classList.toggle('show');
+        categoryDropdown.classList.remove('show');
+        trainingDropdown.classList.remove('show');
+    });
+    document.addEventListener('click', () => {
+        categoryDropdown.classList.remove('show');
+        trainingDropdown.classList.remove('show');
+        userDropdown.classList.remove('show');
+    });
+
+    document.querySelectorAll('#category-dropdown a').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            updateCategory(link.dataset.category);
+            categoryDropdown.classList.remove('show');
+        });
+    });
+
+    // Settings
+    document.getElementById('settings-nav-btn').addEventListener('click', () => {
+        settingsPanel.classList.add('open');
+        settingsOverlay.style.display = 'block';
+    });
+    document.getElementById('close-settings').addEventListener('click', () => {
+        settingsPanel.classList.remove('open');
+        settingsOverlay.style.display = 'none';
+    });
+    settingsOverlay.addEventListener('click', () => {
+        settingsPanel.classList.remove('open');
+        settingsOverlay.style.display = 'none';
+    });
+
+    document.getElementById('algorithms-nav-btn').addEventListener('click', () => {
+        alert('Módulo de algoritmos en desarrollo');
+    });
+
+    document.getElementById('logout-btn').addEventListener('click', (e) => {
+        e.preventDefault();
+        alert('Sesión cerrada');
+    });
+
+    // Exportar datos
+    document.getElementById('export-data').addEventListener('click', () => {
+        const data = JSON.stringify({ times, exportDate: new Date().toISOString() }, null, 2);
+        const blob = new Blob([data], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `speedtimer-backup.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    });
+
+    // Inicializar
+    generateNewScramble();
+    updateStats();
+    renderTimesList();
+});
+</script>
+</body>
+</html>

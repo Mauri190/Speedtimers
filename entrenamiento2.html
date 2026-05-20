@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpeedTimer - Entrenamiento 2x2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #3b82f6;
+            --accent-color: #f59e0b;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: white;
+        }
+
+        .panel {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--primary-color);
+            border-radius: 12px;
+            backdrop-filter: blur(5px);
+        }
+
+        .phase-btn {
+            background-color: rgba(59, 130, 246, 0.2);
+            border: 1px solid var(--primary-color);
+            transition: all 0.3s ease;
+        }
+        .phase-btn:hover {
+            background-color: rgba(59, 130, 246, 0.4);
+        }
+        .phase-active {
+            background-color: var(--primary-color) !important;
+            color: white;
+            box-shadow: 0 0 0 3px var(--accent-color);
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.5);
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            transition: all 0.3s ease;
+        }
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.5);
+        }
+        .btn-secondary {
+            background: #64748b;
+            transition: all 0.3s ease;
+        }
+        .btn-secondary:hover {
+            background: #475569;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(100, 116, 139, 0.5);
+        }
+
+        .stats-card {
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 8px;
+            padding: 1rem;
+        }
+
+        .heatmap-cell {
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .heatmap-cell:hover .heatmap-tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .heatmap-tooltip {
+            visibility: hidden;
+            width: 120px;
+            background-color: rgba(0,0,0,0.9);
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4">
+    <div class="container mx-auto max-w-6xl space-y-6">
+        <div class="flex justify-between items-center">
+            <h1 class="text-2xl font-bold" style="color: var(--primary-color);">
+                <i class="fas fa-tachometer-alt mr-2"></i>Modo Entrenamiento 2x2
+            </h1>
+            <a href="index.html" class="btn-primary px-4 py-2 rounded-lg flex items-center">
+                <i class="fas fa-arrow-left mr-2"></i>Volver al Timer Principal
+            </a>
+        </div>
+
+        <div class="panel p-5">
+            <h2 class="text-xl font-semibold mb-4" style="color: var(--primary-color);">
+                <i class="fas fa-layer-group mr-2"></i>Entrenamiento por Fases (2x2)
+            </h2>
+
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+                <button class="phase-btn py-3 rounded-lg" data-phase="firstLayer">
+                    <i class="fas fa-layer-group mr-2"></i>Primera Capa
+                </button>
+                <button class="phase-btn py-3 rounded-lg" data-phase="oll">
+                    <i class="fas fa-sun mr-2"></i>OLL
+                </button>
+                <button class="phase-btn py-3 rounded-lg" data-phase="pll">
+                    <i class="fas fa-star mr-2"></i>PLL
+                </button>
+            </div>
+
+            <div id="phase-timer-container">
+                <div class="flex flex-col md:flex-row gap-6 items-center">
+                    <div class="flex-1 text-center">
+                        <div id="phase-timer" class="text-6xl font-mono mb-4">0.00</div>
+                        <div class="flex justify-center gap-4 mb-6">
+                            <button id="phase-start-stop" class="btn-primary px-6 py-3 rounded-lg w-40">
+                                <i class="fas fa-play mr-2"></i>Iniciar
+                            </button>
+                            <button id="phase-next" class="btn-secondary px-6 py-3 rounded-lg w-40">
+                                <i class="fas fa-step-forward mr-2"></i>Siguiente
+                            </button>
+                        </div>
+                        <div class="text-center text-sm text-gray-400 mb-4">
+                            <p>Usa 'Espacio' para Iniciar/Detener.</p>
+                            <p>Click en las fases para cambiar.</p>
+                        </div>
+                    </div>
+
+                    <div class="flex-1">
+                        <h3 class="text-lg font-semibold mb-2 text-center">Fase Actual:
+                            <span id="current-phase-display" class="font-bold text-xl" style="color: var(--accent-color);">-</span>
+                        </h3>
+                        <div id="phase-scramble-container" class="mb-2">
+                            <p class="text-sm text-center text-gray-300">Scramble para la fase:</p>
+                            <div id="phase-scramble" class="text-center font-mono bg-slate-700 p-2 rounded text-sm">
+                                Selecciona una fase y presiona Iniciar.
+                            </div>
+                        </div>
+                        <div id="phase-tips" class="text-center text-xs text-blue-300 mt-2">
+                            <i class="fas fa-lightbulb mr-1"></i><span id="tip-content">Selecciona una fase para ver consejos</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="phase-stats" class="mt-6">
+                <h3 class="font-semibold mb-4 text-center text-lg">Estadísticas de la Sesión (Promedio / Mejor)</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="stats-card">
+                        <div class="text-sm text-center">Primera Capa</div>
+                        <div class="text-center">
+                            <div class="text-xl font-bold" id="firstLayer-avg">- / -</div>
+                            <div class="text-xs text-gray-400" id="firstLayer-count">Solves: 0</div>
+                        </div>
+                    </div>
+                    <div class="stats-card">
+                        <div class="text-sm text-center">OLL</div>
+                        <div class="text-center">
+                            <div class="text-xl font-bold" id="oll-avg">- / -</div>
+                            <div class="text-xs text-gray-400" id="oll-count">Solves: 0</div>
+                        </div>
+                    </div>
+                    <div class="stats-card">
+                        <div class="text-sm text-center">PLL</div>
+                        <div class="text-center">
+                            <div class="text-xl font-bold" id="pll-avg">- / -</div>
+                            <div class="text-xs text-gray-400" id="pll-count">Solves: 0</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-center mt-4">
+                    <button id="reset-session-stats" class="btn-danger px-4 py-2 rounded-lg text-sm">
+                        <i class="fas fa-undo mr-2"></i>Reiniciar Estadísticas
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel p-5">
+            <h2 class="text-xl font-semibold mb-4" style="color: var(--primary-color);">
+                <i class="fas fa-fire mr-2"></i>Distribución de Tiempos
+            </h2>
+            <div class="mb-4 flex justify-between items-center">
+                <div>
+                    <label for="heatmap-range" class="mr-2">Rango de tiempos:</label>
+                    <select id="heatmap-range" class="bg-slate-700 rounded px-3 py-1">
+                        <option value="all">Todos los tiempos</option>
+                        <option value="last24h">Últimas 24 horas</option>
+                        <option value="lastWeek">Última semana</option>
+                        <option value="lastMonth">Último mes</option>
+                    </select>
+                </div>
+                <button id="refresh-heatmap" class="btn-primary px-3 py-1 rounded-lg text-sm">
+                    <i class="fas fa-sync-alt mr-2"></i>Actualizar
+                </button>
+            </div>
+            <div class="overflow-auto">
+                <div id="heatmap-container" class="min-w-full p-4 bg-slate-700 rounded-lg">
+                    <div class="text-center mb-2 text-sm text-gray-300">
+                        Frecuencia de tus tiempos por rangos (más oscuro = más frecuente)
+                    </div>
+                    <div id="heatmap-content" class="min-h-[120px] flex flex-col justify-center">
+                        <div class="text-center text-gray-400">No hay datos para mostrar. Completa algunas fases para ver tu distribución de tiempos.</div>
+                    </div>
+                    <div class="mt-3 text-xs text-gray-400 text-center">
+                        <i class="fas fa-info-circle mr-1"></i> Cada celda muestra cuántos solves has completado en ese rango de tiempo
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel p-5">
+            <h2 class="text-xl font-semibold mb-4" style="color: var(--primary-color);">
+                <i class="fas fa-chart-line mr-2"></i>Progreso General por Fases
+            </h2>
+            <div class="h-64">
+                <canvas id="phases-chart-historic"></canvas>
+            </div>
+        </div>
+
+        <div class="panel p-5">
+            <h2 class="text-xl font-semibold mb-4" style="color: var(--primary-color);">
+                <i class="fas fa-save mr-2"></i>Gestión de Datos
+            </h2>
+            <div class="flex flex-col sm:flex-row gap-4">
+                <button id="export-csv" class="btn-primary py-2 px-4 rounded-lg flex-1">
+                    <i class="fas fa-file-csv mr-2"></i>Exportar Datos
+                </button>
+                <button id="clear-local-data" class="btn-danger py-2 px-4 rounded-lg flex-1">
+                    <i class="fas fa-trash-alt mr-2"></i>Borrar Todo
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Variables de estado
+            let trainingData = {
+                phaseHistory: [],
+                currentSession: {
+                    firstLayer: [], oll: [], pll: []
+                }
+            };
+            let currentPhase = null;
+            let phaseTimerRunning = false;
+            let phaseStartTime = 0;
+            let phaseTimerInterval = null;
+            let lastScramble = "";
+            let historicPhaseChart = null;
+        
+            // Elementos del DOM
+            const phaseTimerDisplay = document.getElementById('phase-timer');
+            const phaseStartStopButton = document.getElementById('phase-start-stop');
+            const phaseNextButton = document.getElementById('phase-next');
+            const currentPhaseDisplay = document.getElementById('current-phase-display');
+            const phaseScrambleDisplay = document.getElementById('phase-scramble');
+            const phaseButtons = document.querySelectorAll('.phase-btn');
+            const resetSessionStatsButton = document.getElementById('reset-session-stats');
+            const refreshHeatmapButton = document.getElementById('refresh-heatmap');
+            const heatmapRangeSelect = document.getElementById('heatmap-range');
+            const heatmapContent = document.getElementById('heatmap-content');
+            const phaseTipsElement = document.getElementById('phase-tips');
+            const tipContentElement = document.getElementById('tip-content');
+        
+            // Inicializar
+            loadTrainingData();
+            updateAllPhaseStatsUI();
+            updateHistoricPhaseChart();
+            renderHeatmap();
+        
+            // Event listeners
+            phaseButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    if (phaseTimerRunning) {
+                        alert("Detén el cronómetro antes de cambiar de fase");
+                        return;
+                    }
+                    selectPhase(this.dataset.phase);
+                });
+            });
+        
+            phaseStartStopButton.addEventListener('click', function() {
+                handleStartStop();
+            });
+        
+            phaseNextButton.addEventListener('click', function() {
+                if (phaseTimerRunning) {
+                    alert("Detén el cronómetro primero.");
+                    return;
+                }
+                
+                const phases = ['firstLayer', 'oll', 'pll'];
+                if (!currentPhase) {
+                    selectPhase(phases[0]);
+                } else {
+                    const currentIndex = phases.indexOf(currentPhase);
+                    const nextIndex = (currentIndex + 1) % phases.length;
+                    selectPhase(phases[nextIndex]);
+                }
+            });
+        
+            resetSessionStatsButton.addEventListener('click', function() {
+                if (confirm("¿Reiniciar estadísticas de esta sesión?")) {
+                    trainingData.currentSession = {
+                        firstLayer: [], oll: [], pll: []
+                    };
+                    saveTrainingData();
+                    updateAllPhaseStatsUI();
+                }
+            });
+        
+            refreshHeatmapButton.addEventListener('click', function() {
+                renderHeatmap();
+            });
+        
+            document.addEventListener('keydown', function(e) {
+                if (e.code === 'Space' && !e.target.matches('input, textarea, select, button')) {
+                    e.preventDefault();
+                    handleStartStop();
+                }
+            });
+        
+            // Funciones principales
+            function selectPhase(phase) {
+                currentPhase = phase;
+                phaseTimerDisplay.textContent = "0.00";
+                
+                // Actualizar UI
+                phaseButtons.forEach(btn => {
+                    btn.classList.remove('phase-active');
+                    if (btn.dataset.phase === phase) {
+                        btn.classList.add('phase-active');
+                    }
+                });
+                
+                currentPhaseDisplay.textContent = getPhaseName(phase);
+                
+                // Generar scramble para la fase
+                lastScramble = generatePhaseScramble(phase);
+                phaseScrambleDisplay.textContent = lastScramble;
+                
+                // Configurar botón de inicio
+                phaseStartStopButton.innerHTML = '<i class="fas fa-play mr-2"></i>Iniciar';
+                phaseStartStopButton.classList.remove('btn-danger');
+                phaseStartStopButton.classList.add('btn-primary');
+                
+                // Mostrar consejos para la fase
+                showPhaseTips(phase);
+            }
+        
+            function showPhaseTips(phase) {
+                const tips = {
+                    "firstLayer": "Resuelve la primera capa completa (todas las piezas en su lugar y orientadas correctamente).",
+                    "oll": "Orientación de la última capa: lleva todos los colares superiores al amarillo (o color de la capa superior).",
+                    "pll": "Permutación de la última capa: coloca todas las piezas en su posición correcta."
+                };
+                
+                if (tips[phase]) {
+                    tipContentElement.textContent = tips[phase];
+                    phaseTipsElement.style.display = 'block';
+                } else {
+                    phaseTipsElement.style.display = 'none';
+                }
+            }
+        
+            function handleStartStop() {
+                if (!currentPhase) {
+                    selectPhase('firstLayer');
+                    return;
+                }
+                
+                if (!phaseTimerRunning) {
+                    startPhaseTimer();
+                } else {
+                    stopPhaseTimer();
+                }
+            }
+        
+            function startPhaseTimer() {
+                if (phaseTimerRunning) return;
+                
+                phaseTimerRunning = true;
+                phaseStartTime = Date.now();
+                phaseTimerInterval = setInterval(updatePhaseTimerDisplay, 10);
+                
+                phaseStartStopButton.innerHTML = '<i class="fas fa-stop mr-2"></i>Detener';
+                phaseStartStopButton.classList.remove('btn-primary');
+                phaseStartStopButton.classList.add('btn-danger');
+                
+                phaseButtons.forEach(btn => {
+                    btn.disabled = true;
+                });
+            }
+        
+            function stopPhaseTimer() {
+                if (!phaseTimerRunning) return;
+                
+                clearInterval(phaseTimerInterval);
+                phaseTimerRunning = false;
+                const elapsedTime = (Date.now() - phaseStartTime) / 1000;
+                phaseTimerDisplay.textContent = elapsedTime.toFixed(2);
+                
+                phaseStartStopButton.innerHTML = '<i class="fas fa-play mr-2"></i>Iniciar';
+                phaseStartStopButton.classList.remove('btn-danger');
+                phaseStartStopButton.classList.add('btn-primary');
+                
+                phaseButtons.forEach(btn => {
+                    btn.disabled = false;
+                });
+                
+                // Guardar el tiempo
+                if (currentPhase && trainingData.currentSession[currentPhase] !== undefined) {
+                    trainingData.currentSession[currentPhase].push(elapsedTime);
+                    trainingData.phaseHistory.push({
+                        phase: currentPhase,
+                        time: elapsedTime,
+                        scramble: lastScramble,
+                        date: Date.now()
+                    });
+                    saveTrainingData();
+                    updatePhaseStatsUI(currentPhase);
+                    updateHistoricPhaseChart();
+                    renderHeatmap();
+                }
+            }
+        
+            function updatePhaseTimerDisplay() {
+                const elapsedTime = (Date.now() - phaseStartTime) / 1000;
+                phaseTimerDisplay.textContent = elapsedTime.toFixed(2);
+            }
+        
+            function getPhaseName(phase) {
+                const names = {
+                    "firstLayer": "Primera Capa",
+                    "oll": "OLL",
+                    "pll": "PLL"
+                };
+                return names[phase] || "-";
+            }
+        
+            function generateStandardScramble(length = 10) {
+                const moves = ["U", "U'", "U2", "R", "R'", "R2", "F", "F'", "F2"];
+                let scramble = [];
+                let lastMove = "";
+                
+                for (let i = 0; i < length; i++) {
+                    let move;
+                    do {
+                        move = moves[Math.floor(Math.random() * moves.length)];
+                    } while (move.charAt(0) === lastMove.charAt(0));
+                    
+                    scramble.push(move);
+                    lastMove = move;
+                }
+                
+                return scramble.join(' ');
+            }
+        
+            function generatePhaseScramble(phase) {
+                switch(phase) {
+                    case 'firstLayer':
+                        return generateStandardScramble(8);
+                    case 'oll':
+                        // Scramble que lleva a un caso OLL aleatorio (2x2)
+                        const ollCases2x2 = [
+                            "F R U R' U' F'",       // Sune
+                            "R U R' U R U2 R'",     // Anti-Sune
+                            "R U2 R' U' R U' R'",   // Pi
+                            "F R U R' U' F R U R' U' F'" // H
+                        ];
+                        return ollCases2x2[Math.floor(Math.random() * ollCases2x2.length)];
+                    case 'pll':
+                        // Scramble que lleva a un caso PLL aleatorio (2x2)
+                        const pllCases2x2 = [
+                            "R U' R U R U R U' R' U' R2", // Y-perm
+                            "R2 U R2 U' R2", // Adjacent swap (U-perm)
+                            "R U' R' U' F2 U' R U R' U F2" // Diagonal swap (Z-perm)
+                        ];
+                        return pllCases2x2[Math.floor(Math.random() * pllCases2x2.length)];
+                    default:
+                        return generateStandardScramble();
+                }
+            }
+        
+            // Estadísticas
+            function updatePhaseStatsUI(phase) {
+                if (!phase) return;
+                const sessionTimes = trainingData.currentSession[phase];
+                if (!sessionTimes || sessionTimes.length === 0) {
+                    document.getElementById(`${phase}-avg`).textContent = "- / -";
+                    document.getElementById(`${phase}-count`).textContent = "Solves: 0";
+                    return;
+                }
+                
+                const sum = sessionTimes.reduce((a, b) => a + b, 0);
+                const avg = (sum / sessionTimes.length).toFixed(2);
+                const best = Math.min(...sessionTimes).toFixed(2);
+                
+                document.getElementById(`${phase}-avg`).textContent = `${avg}s / ${best}s`;
+                document.getElementById(`${phase}-count`).textContent = `Solves: ${sessionTimes.length}`;
+            }
+        
+            function updateAllPhaseStatsUI() {
+                ['firstLayer', 'oll', 'pll'].forEach(phase => {
+                    updatePhaseStatsUI(phase);
+                });
+            }
+        
+            // Heatmap
+            function renderHeatmap() {
+                heatmapContent.innerHTML = '';
+                const rangeType = heatmapRangeSelect.value;
+                let filteredTimes = trainingData.phaseHistory;
+                
+                const now = Date.now();
+                if (rangeType === "last24h") {
+                    filteredTimes = trainingData.phaseHistory.filter(t => t.date && (now - t.date) < 24 * 60 * 60 * 1000);
+                } else if (rangeType === "lastWeek") {
+                    filteredTimes = trainingData.phaseHistory.filter(t => t.date && (now - t.date) < 7 * 24 * 60 * 60 * 1000);
+                } else if (rangeType === "lastMonth") {
+                    filteredTimes = trainingData.phaseHistory.filter(t => t.date && (now - t.date) < 30 * 24 * 60 * 60 * 1000);
+                }
+                
+                if (filteredTimes.length === 0) {
+                    heatmapContent.innerHTML = '<div class="text-center text-gray-400">No hay datos para el rango seleccionado. Completa algunas fases para ver tu distribución de tiempos.</div>';
+                    return;
+                }
+                
+                // Definir rangos de tiempo específicos para 2x2
+                const timeRanges = [
+                    { label: "0-1s", min: 0, max: 1 },
+                    { label: "1-2s", min: 1, max: 2 },
+                    { label: "2-3s", min: 2, max: 3 },
+                    { label: "3-4s", min: 3, max: 4 },
+                    { label: "4-5s", min: 4, max: 5 },
+                    { label: "5-7s", min: 5, max: 7 },
+                    { label: "7-10s", min: 7, max: 10 },
+                    { label: "10+ s", min: 10, max: Infinity }
+                ];
+                
+                // Contar tiempos en cada rango
+                const counts = timeRanges.map(range => {
+                    return filteredTimes.filter(t => t.time >= range.min && t.time < range.max).length;
+                });
+                
+                const maxCount = Math.max(...counts);
+                if (maxCount === 0) {
+                    heatmapContent.innerHTML = '<div class="text-center text-gray-400">No hay tiempos válidos para mostrar.</div>';
+                    return;
+                }
+                
+                // Crear visualización del heatmap
+                const heatmapVisualization = document.createElement('div');
+                heatmapVisualization.className = 'w-full';
+                
+                timeRanges.forEach((range, index) => {
+                    const count = counts[index];
+                    const percentage = maxCount > 0 ? (count / maxCount * 100) : 0;
+                    
+                    const rangeElement = document.createElement('div');
+                    rangeElement.className = 'mb-2';
+                    
+                    const labelElement = document.createElement('div');
+                    labelElement.className = 'flex justify-between text-xs mb-1';
+                    labelElement.innerHTML = `
+                        <span>${range.label}</span>
+                        <span>${count} solves</span>
+                    `;
+                    
+                    const barContainer = document.createElement('div');
+                    barContainer.className = 'w-full bg-gray-600 rounded-full h-4';
+                    
+                    const barElement = document.createElement('div');
+                    barElement.className = 'bg-blue-500 h-4 rounded-full';
+                    barElement.style.width = `${percentage}%`;
+                    barElement.style.transition = 'width 0.5s ease';
+                    
+                    barContainer.appendChild(barElement);
+                    rangeElement.appendChild(labelElement);
+                    rangeElement.appendChild(barContainer);
+                    heatmapVisualization.appendChild(rangeElement);
+                });
+                
+                heatmapContent.appendChild(heatmapVisualization);
+            }
+        
+            // Gráfico histórico
+            function updateHistoricPhaseChart() {
+                const ctx = document.getElementById('phases-chart-historic').getContext('2d');
+                
+                if (historicPhaseChart) {
+                    historicPhaseChart.destroy();
+                }
+                
+                const phases = ['firstLayer', 'oll', 'pll'];
+                const phaseData = phases.map(phase => {
+                    const times = trainingData.phaseHistory
+                        .filter(entry => entry.phase === phase)
+                        .map(entry => entry.time);
+                    
+                    return {
+                        phase: phase,
+                        count: times.length,
+                        avg: times.length > 0 ? 
+                            (times.reduce((a, b) => a + b, 0) / times.length) : 
+                            null
+                    };
+                }).filter(data => data.count > 0);
+                
+                if (phaseData.length === 0) {
+                    ctx.font = '16px Arial';
+                    ctx.fillStyle = '#9ca3af';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('No hay datos históricos', ctx.canvas.width / 2, ctx.canvas.height / 2);
+                    return;
+                }
+                
+                historicPhaseChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: phaseData.map(data => getPhaseName(data.phase)),
+                        datasets: [{
+                            label: 'Tiempo Promedio (s)',
+                            data: phaseData.map(data => data.avg),
+                            backgroundColor: [
+                                'rgba(59, 130, 246, 0.7)',
+                                'rgba(234, 179, 8, 0.7)',
+                                'rgba(236, 72, 153, 0.7)'
+                            ],
+                            borderColor: [
+                                'rgba(59, 130, 246, 1)',
+                                'rgba(234, 179, 8, 1)',
+                                'rgba(236, 72, 153, 1)'
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    color: 'white',
+                                    callback: function(value) {
+                                        return value + 's';
+                                    }
+                                },
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    color: 'white'
+                                },
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: 'white'
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return context.parsed.y.toFixed(2) + 's';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        
+            // Almacenamiento local
+            function loadTrainingData() {
+                const savedData = localStorage.getItem('speedtimer2x2TrainingData');
+                if (savedData) {
+                    try {
+                        const parsedData = JSON.parse(savedData);
+                        if (parsedData) {
+                            trainingData.phaseHistory = parsedData.phaseHistory || [];
+                            trainingData.currentSession = parsedData.currentSession || {
+                                firstLayer: [], oll: [], pll: []
+                            };
+                        }
+                    } catch (e) {
+                        console.error("Error al cargar datos:", e);
+                    }
+                }
+            }
+        
+            function saveTrainingData() {
+                localStorage.setItem('speedtimer2x2TrainingData', JSON.stringify(trainingData));
+            }
+            
+            // Exportar a CSV
+            document.getElementById('export-csv').addEventListener('click', function() {
+                if (trainingData.phaseHistory.length === 0) {
+                    alert("No hay datos para exportar.");
+                    return;
+                }
+                
+                let csvContent = "data:text/csv;charset=utf-8,";
+                csvContent += "Fecha,Fase,Tiempo(s),Scramble\n";
+                
+                trainingData.phaseHistory.forEach(item => {
+                    const date = new Date(item.date);
+                    const dateStr = date.toLocaleString();
+                    csvContent += `${dateStr},${getPhaseName(item.phase)},${item.time},${item.scramble}\n`;
+                });
+                
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", "speedtimer_2x2_training_data.csv");
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+            
+            // Borrar datos locales
+            document.getElementById('clear-local-data').addEventListener('click', function() {
+                if (confirm("¿Estás seguro de que quieres borrar TODOS los datos de entrenamiento?")) {
+                    localStorage.removeItem('speedtimer2x2TrainingData');
+                    trainingData = {
+                        phaseHistory: [],
+                        currentSession: {
+                            firstLayer: [], oll: [], pll: []
+                        }
+                    };
+                    updateAllPhaseStatsUI();
+                    updateHistoricPhaseChart();
+                    renderHeatmap();
+                    alert("Todos los datos han sido borrados.");
+                }
+            });
+        });
+    </script>
+</body>
+</html>
